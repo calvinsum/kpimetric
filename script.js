@@ -956,27 +956,6 @@ function saveWeightageSettings() {
     console.log('Weightage settings prepared for saving.');
 }
 
-function getUnitForBandInput(kpiInputType, bandConditionType) {
-    // Prioritize bandConditionType if it's more specific (e.g. for mixed types within a KPI)
-    // However, kpiInputType is the primary source.
-    const typeToUse = bandConditionType || kpiInputType;
-    switch (typeToUse) {
-        case 'percentage':
-        case 'percentage_compliance':
-            return '%';
-        case 'duration_days':
-            return 'days';
-        case 'duration_hours':
-            return 'hrs';
-        case 'duration_minutes':
-            return 'mins';
-        case 'number':
-            return ''; // Or specific unit if known, but generally numbers are unitless here
-        default:
-            return '';
-    }
-}
-
 function saveEditableSettingsDetails() {
     let allValid = true;
     // Save Performance Band Inputs (existing logic)
