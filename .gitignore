@@ -48,7 +48,7 @@ venv/          # Python virtual environments
 Screenshot*.png  # Ignores files starting with "Screenshot"
 *.jpg
 *.jpeg
-*.png
+# *.png
 *.gif
 *.bmp
 *.svg # Be careful with images, if they are part of your web app, don't ignore them.
