@@ -539,12 +539,13 @@ button[id^="back-to-role-list-button"]:hover {
 
 /* Login Screen Styles */
 #login-screen {
+    background: url('https://i.imgur.com/yourImage.png') no-repeat center center / cover;
     display: flex;
     height: 100vh;
     align-items: center;
     justify-content: center;
-    background: url('/login-bg.png') no-repeat center center / cover;
   }
+  
   
   .login-container {
     background: rgba(255, 255, 255, 0.9);
