@@ -68,6 +68,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script type="module" src="script.js"></script>
+    <script type="module">
+        import { handleLogin } from './src/auth.js';
+      
+        document.getElementById('login-button').addEventListener('click', handleLogin);
+      </script>      
 </body>
 </html> 

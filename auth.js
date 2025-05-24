@@ -1,5 +1,5 @@
 // src/auth.js
-import { auth, provider, signInWithPopup } from "./firebase";
+import { auth, provider, signInWithPopup } from './firebase.js'; // relative to src/
 
 function handleLogin() {
   signInWithPopup(auth, provider)
