@@ -4,10 +4,13 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstati
 
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  // ... any other values (storageBucket, messagingSenderId, etc.)
+  apiKey: "AIzaSyB3DrlANt_TFGEBI17OpCLDfKNAkhbSJDo",
+  authDomain: "keymetric-7437c.firebaseapp.com",
+  projectId: "keymetric-7437c",
+  storageBucket: "keymetric-7437c.firebasestorage.app",
+  messagingSenderId: "106688601449",
+  appId: "1:106688601449:web:d46111a1c566b7cd7c31f8",
+  measurementId: "G-QJ47CCKW3N"
 };
 
 const app = initializeApp(firebaseConfig);
