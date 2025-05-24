@@ -1088,11 +1088,6 @@ function loadEmployeeData() {
     console.log('Employee data loaded:', employeeData);
 }
 
-function persistEmployeeData() {
-    localStorage.setItem('kpiAppEmployeeData', JSON.stringify(employeeData));
-    console.log('Employee data persisted to local storage.');
-    // alert('Employee data saved!'); // Optional: alert, or handle feedback differently
-}
 
 // --- Render Employee Section (Initial) ---
 function renderEmployeeSection() {
