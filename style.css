@@ -536,3 +536,47 @@ button[id^="back-to-role-list-button"]:hover {
     box-sizing: border-box; 
     /* border-bottom: 1px solid #5a6a7a; /* Optional: A slightly lighter border if needed */
 }
+
+/* Login Screen Styles */
+#login-screen {
+    display: flex;
+    height: 100vh;
+    align-items: center;
+    justify-content: center;
+    background: url('kpi-wallpaper.png') no-repeat center center / cover;
+  }
+  
+  .login-container {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 40px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  .login-container h1 {
+    margin-bottom: 20px;
+    font-size: 1.8em;
+    color: #2c3e50;
+  }
+  
+  .login-container button {
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, transform 0.1s ease;
+  }
+  
+  .login-container button:hover {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+  }
+  
+  .login-container button:active {
+    transform: translateY(0px);
+  }
+  
