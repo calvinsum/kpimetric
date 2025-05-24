@@ -956,7 +956,6 @@ function saveWeightageSettings() {
     console.log('Weightage settings prepared for saving.');
 }
 
-
 function saveEditableSettingsDetails() {
     let allValid = true;
     // Save Performance Band Inputs (existing logic)
