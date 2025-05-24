@@ -11,8 +11,19 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <h2>KeyMetric</h2> <!-- Or your app logo -->
-                <button id="login-button">Sign in</button>
-                <button id="logout-button">Logout</button>
+                <!-- This will be your login screen -->
+<div id="login-screen" style="text-align: center; padding-top: 100px;">
+    <h1>Welcome to KeyMetric</h1>
+    <button id="login-button">Sign in with Google</button>
+  </div>
+  <!-- This will be hidden initially -->
+  <div id="app-container" style="display: none;">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>KeyMetric</h2>
+        <button id="logout-button">Logout</button>
+      </div>
+      <!-- ...rest of your sidebar nav -->  
             </div>
             <nav class="sidebar-nav">
                 <ul>

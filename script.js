@@ -4,6 +4,20 @@ import { handleLogin, handleLogout } from './auth.js';
 document.getElementById('login-button').addEventListener('click', handleLogin);
 document.getElementById('logout-button').addEventListener('click', handleLogout);
 
+// Listen for auth changes
+onAuthStateChanged(auth, (user) => {
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
+  
+    if (user && user.email.endsWith('@storehub.com')) {
+      loginScreen.style.display = 'none';
+      appContainer.style.display = 'block';
+    } else {
+      loginScreen.style.display = 'block';
+      appContainer.style.display = 'none';
+    }
+  });
+
 // DOM Elements
 const navCalculator = document.getElementById('nav-calculator');
 const navEmployee = document.getElementById('nav-employee'); 
