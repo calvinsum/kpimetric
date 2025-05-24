@@ -5,47 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KeyMetric</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        #login-screen {
+            display: flex;
+            height: 100vh;
+            align-items: center;
+            justify-content: center;
+            background-color: #f4f4f4;
+        }
+
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1000px;
+            width: 100%;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-left h1 {
+            margin-bottom: 20px;
+        }
+
+        .login-left button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .login-right {
+            flex: 1;
+            padding-left: 40px;
+            text-align: center;
+        }
+
+        .login-right img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        #app-container {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="app-container">
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-container">
+            <div class="login-left">
+                <h1>Welcome to KeyMetric</h1>
+                <button id="login-button">Sign in with Google</button>
+            </div>
+            <div class="login-right">
+                <img src="login-illustration.png" alt="Welcome Image">
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="app-container">
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>KeyMetric</h2> <!-- Or your app logo -->
-                <!-- This will be your login screen -->
-<div id="login-screen" style="text-align: center; padding-top: 100px;">
-    <h1>Welcome to KeyMetric</h1>
-    <button id="login-button">Sign in with Google</button>
-  </div>
-  <!-- This will be hidden initially -->
-  <div id="app-container" style="display: none;">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2>KeyMetric</h2>
-        <button id="logout-button">Logout</button>
-      </div>
-      <!-- ...rest of your sidebar nav -->  
+                <h2>KeyMetric</h2>
+                <button id="logout-button">Logout</button>
             </div>
             <nav class="sidebar-nav">
                 <ul>
                     <li><a href="#" id="nav-calculator" class="active">KPI Calculator</a></li>
-                    
-                    <!-- Employee Competencies Link (No Icon, Correct Position, consistent with your other li > a style) -->
-                    <li> 
-                        <a href="#" id="nav-competencies">Competencies</a>
-                    </li>
-
+                    <li><a href="#" id="nav-competencies">Competencies</a></li>
                     <li><a href="#" id="nav-employee">Employee</a></li>
                     <li><a href="#" id="nav-report">Report</a></li>
                     <li><a href="#" id="nav-settings">Settings</a></li>
-                    <!-- Add more navigation links here if needed -->
                 </ul>
             </nav>
         </aside>
 
         <main class="main-content">
             <section id="calculator-section">
-                <!-- Content for KPI Calculator will be dynamically populated by script.js -->
-                <!-- Initial structure might include a placeholder or loading message -->
                  <h2>KPI Calculator</h2>
                  <p>Select a role to calculate KPI scores.</p>
             </section>
@@ -53,26 +101,20 @@
             <section id="competencies-section" class="main-section" style="display: none;">
                 <h2>Competencies</h2>
                 <p>Assess and view employee competencies and skill levels.</p>
-                <div id="competency-assessment-content-wrapper">
-                    <!-- Content for this section will be dynamically rendered by JavaScript -->
-                </div>
+                <div id="competency-assessment-content-wrapper"></div>
             </section>
 
             <section id="employee-section" style="display: none;">
                 <h2>Employee Management</h2>
                 <p>Manage employee details, assign roles, and view their information.</p>
-                <!-- Employee content will be dynamically generated here -->
             </section>
 
             <section id="report-section" style="display: none;">
                 <h2>Performance Reports</h2>
                 <p>View historical performance records for employees.</p>
-                <!-- Report content will be dynamically generated here -->
             </section>
 
             <section id="settings-section" style="display: none;">
-                <!-- Content for Settings will be dynamically populated by script.js -->
-                <!-- Initial structure for settings -->
                 <h2>Settings</h2>
                 <p>Manage application settings, roles, and KPI definitions here.</p>
             </section>
@@ -80,6 +122,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script type="module" src="./script.js"></script>        
+    <script type="module" src="./script.js"></script>
 </body>
-</html> 
+</html>
