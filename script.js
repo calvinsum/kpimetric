@@ -3518,69 +3518,9 @@ function renderCompetencyTypeManagement(container, category, editTypeData = null
 // Also, ensure the DOMContentLoaded listener calls loadCompetencyCategories, and renderSettings/displaySettingInputs are updated for 'competencySetup' routing.
 
 // Helper function to render level description fields
-function renderLevelDescriptionInputs(containerId, scale, descriptions = []) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = ''; // Clear previous fields
-    if (scale > 0 && scale <= 20) { // Max 20 levels for sanity
-        for (let i = 1; i <= scale; i++) {
-            const desc = descriptions[i - 1] || ''; // Get existing description or empty string
-            container.innerHTML += `
-                <div class="kpi-form-field" style="margin-left:15px; margin-bottom:5px;">
-                    <label for="level-desc-${i}" style="display:block; font-weight:normal; margin-bottom:2px;">Description for Level ${i}:</label>
-                    <textarea id="level-desc-${i}" rows="2" style="width: calc(100% - 22px); padding: 5px; border:1px solid #ccc; border-radius:3px;" placeholder="Define what Level ${i} means...">${desc}</textarea>
-                </div>
-            `;
-        }
-    }
-}
 
 // Placeholder for the new rendering function
-function renderCompetenciesSection() {
-    console.log("[renderCompetenciesSection] Called. Initializing Employee Competencies page...");
-    const contentWrapper = document.getElementById('competency-assessment-content-wrapper');
-    if (!contentWrapper) {
-        console.error("[renderCompetenciesSection] competency-assessment-content-wrapper not found!");
-        return;
-    }
 
-    let selectorHTML = '<div style="margin-bottom: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px;">';
-    selectorHTML += '<label for="competency-employee-select" style="margin-right: 10px; font-weight: bold;">Select Employee:</label>';
-    selectorHTML += '<select id="competency-employee-select" style="padding: 5px; min-width: 250px;">';
-    selectorHTML += '<option value="">-- Select an Employee --</option>';
-
-    if (employeeData && employeeData.length > 0) {
-        employeeData.forEach(emp => {
-            selectorHTML += `<option value="${emp.id}">${emp.name} (ID: ${emp.id})</option>`;
-        });
-                } else {
-        selectorHTML += '<option value="" disabled>No employees found. Please add employees first.</option>';
-    }
-    selectorHTML += '</select></div>';
-
-    // Remove the temporary debugging styles from this div
-    selectorHTML += '<div id="employee-specific-competency-assessment-area"></div>'; 
-
-    contentWrapper.innerHTML = selectorHTML;
-
-    const employeeSelectForCompetency = document.getElementById('competency-employee-select');
-    const assessmentArea = document.getElementById('employee-specific-competency-assessment-area');
-
-    if (employeeSelectForCompetency && assessmentArea) {
-        employeeSelectForCompetency.addEventListener('change', (event) => {
-            const selectedEmployeeId = event.target.value;
-            if (selectedEmployeeId) {
-                console.log(`[renderCompetenciesSection] Employee selected: ${selectedEmployeeId}. Calling displayEmployeeCompetencyAssessmentUI.`);
-                displayEmployeeCompetencyAssessmentUI(assessmentArea, selectedEmployeeId); // CORRECTED CALL
-            } else {
-                assessmentArea.innerHTML = '<p style="padding:10px; background-color:#f0f0f0;">Please select an employee from the dropdown above.</p>';
-            }
-        });
-    }
-    if(assessmentArea && (!employeeSelectForCompetency || !employeeSelectForCompetency.value)){
-        assessmentArea.innerHTML = '<p style="padding:10px; background-color:#f0f0f0;">Please select an employee from the dropdown above to view or assess their competencies.</p>';
-    }
-}
 // Add more detailed logging at the start of displayEmployeeCompetencyAssessmentUI
 function displayEmployeeCompetencyReport() {
     console.log("[displayEmployeeCompetencyReport] Called.");
@@ -3729,190 +3669,9 @@ function renderLevelDescriptionInputs(containerId, scale, descriptions = []) {
 
 
 // Function to render the list of assessed competencies for an employee
-function renderEmployeeAssessedCompetenciesList(employee, listContainer) {
-    console.log(`[renderEmployeeAssessedCompetenciesList] For employee: ${employee.name}`);
-    if (!listContainer) { console.error("[renderEmployeeAssessedCompetenciesList] List container not found."); return; }
-    
-    let listHTML = `<h4 style="border-bottom:1px solid #ccc; padding-bottom:5px; margin-bottom:10px;">Current Assessed Competencies for ${employee.name}</h4>`;
 
-    const categoriesMap = new Map(configurableCompetencyCategories.map(cat => [cat.id, cat.name]));
-    const typesMap = new Map();
-    configurableCompetencyCategories.forEach(cat => {
-        (cat.types || []).forEach(type => {
-            typesMap.set(type.id, {...type, categoryName: cat.name });
-        });
-    });
-
-    if (!employee.assessedCompetencies || employee.assessedCompetencies.length === 0) {
-        listHTML += '<p style="font-style:italic; color:#777;">No competencies have been assessed for this employee yet.</p>';
-        listContainer.innerHTML = listHTML;
-        return;
-    }
-
-    listHTML += '<ul style="list-style:none; padding:0;">';
-    employee.assessedCompetencies.forEach((assessedComp, index) => {
-        const competencyType = typesMap.get(assessedComp.competencyTypeId);
-        const categoryName = competencyType ? competencyType.categoryName : (categoriesMap.get(assessedComp.categoryId) ? categoriesMap.get(assessedComp.categoryId).name : 'Unknown Category');
-        const typeName = competencyType ? competencyType.name : 'Unknown Competency Type';
-        const levelScale = competencyType ? (competencyType.levelScale || 7) : 7;
-        const levelDescription = (competencyType && Array.isArray(competencyType.levelDescriptions) && assessedComp.assessedLevel && competencyType.levelDescriptions[assessedComp.assessedLevel -1]) 
-                                ? (competencyType.levelDescriptions[assessedComp.assessedLevel -1] || 'N/A') 
-                                : 'N/A';
-
-        listHTML += `<li style="padding:12px; margin-bottom:10px; background-color:#fdfdfd; border:1px solid #e0e0e0; border-radius:4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 8px;">
-                            <strong style="font-size:1.1em; color:#2c3e50;">${typeName}</strong>
-                            <button class="delete-assessed-competency-button setting-button-small danger" data-assessment-index="${index}" title="Delete this assessment">Delete</button>
-                        </div>
-                        <p style="font-size:0.9em; margin:2px 0;"><strong>Category:</strong> ${categoryName}</p>
-                        <p style="font-size:0.9em; margin:2px 0;"><strong>Assessed Level:</strong> <span style="font-weight:bold; color: #007bff;">${assessedComp.assessedLevel} / ${levelScale}</span></p>
-                        <p style="font-size:0.85em; margin:2px 0; color:#555;"><em>Level Definition: ${levelDescription}</em></p>
-                        ${assessedComp.evidence ? `<p style="font-size:0.9em; margin:5px 0;"><strong>Evidence/Comments:</strong><br><span style="white-space: pre-wrap;">${assessedComp.evidence.replace(/\n/g, '<br>')}</span></p>` : ''}
-                        <p style="color:#777; font-size:0.8em; margin-top:8px; text-align:right;">Assessed on: ${new Date(assessedComp.assessmentDate).toLocaleDateString()}</p>
-                     </li>`;
-    });
-    listHTML += '</ul>';
-    listContainer.innerHTML = listHTML;
-
-    listContainer.querySelectorAll('.delete-assessed-competency-button').forEach(button => {
-        button.addEventListener('click', (event) => {
-            console.log("[DEBUG] Delete assessed competency button CLICKED.");
-            const assessmentIndexStr = event.target.dataset.assessmentIndex;
-            console.log("[DEBUG] assessmentIndex from dataset:", assessmentIndexStr);
-            const assessmentIndex = parseInt(assessmentIndexStr);
-
-            if (isNaN(assessmentIndex)) {
-                console.error("[ERROR] Invalid assessmentIndex:", assessmentIndexStr);
-                alert("Error: Could not determine which assessment to delete.");
-                return;
-            }
-
-            const competencyToDisplay = employee.assessedCompetencies[assessmentIndex]; 
-            let competencyNameForConfirm = 'this competency assessment';
-            
-            if(competencyToDisplay){
-                const typeInfo = typesMap.get(competencyToDisplay.competencyTypeId);
-                if(typeInfo) competencyNameForConfirm = typeInfo.name;
-                console.log(`[DEBUG] Attempting to delete: '${competencyNameForConfirm}' at index ${assessmentIndex}`);
-            } else {
-                console.warn(`[DEBUG] Could not find competency in employee.assessedCompetencies at index: ${assessmentIndex} for confirmation message. Employee:`, employee.name);
-            }
-
-            if (confirm(`Are you sure you want to remove the assessment for "${competencyNameForConfirm}"?`)) {
-                if (assessmentIndex >= 0 && assessmentIndex < employee.assessedCompetencies.length) {
-                    console.log("[DEBUG] Splicing assessment at index:", assessmentIndex);
-                    employee.assessedCompetencies.splice(assessmentIndex, 1);
-                    persistEmployeeData();
-                    console.log("[DEBUG] Data persisted. Re-rendering assessed competencies list.");
-                    renderEmployeeAssessedCompetenciesList(employee, listContainer); 
-                } else {
-                    alert("Error: Could not delete assessment due to an invalid index after confirmation.");
-                    console.error("[ERROR] Invalid index for splice:", assessmentIndex, "Assessments array:", employee.assessedCompetencies);
-                    renderEmployeeAssessedCompetenciesList(employee, listContainer); 
-                }
-            }
-        });
-    });
-}
 
 // Function to render fields for assessing a SINGLE competency type
-function renderSingleCompetencyAssessmentFields(container, employee, category, type) {
-    console.log(`[DEBUG] renderSingleCompetencyAssessmentFields: For Employee: ${employee.id}, Category: ${category.name}, Type: ${type.name}`);
-    if (!container) {
-        console.error("[DEBUG] renderSingleCompetencyAssessmentFields: Target container is null!");
-        return;
-    }
-    const competencyTypeId = type.id;
-    const existingAssessment = employee.assessedCompetencies.find(ac => ac.competencyTypeId === competencyTypeId);
-    const currentAssessedLevel = existingAssessment ? existingAssessment.assessedLevel : '';
-    const currentEvidence = existingAssessment ? (existingAssessment.evidence || '') : '';
-    const levelScale = type.levelScale || 7;
-    
-    let fieldsHTML = `<div class="competency-type-assessment-item" data-competency-type-id="${competencyTypeId}" data-category-id="${category.id}" style="padding:15px; background-color:#f0f8ff; border:1px solid #add8e6; border-radius:4px;">
-                        <h5 style="margin-top:0;">Assessing: ${type.name} <small style="font-weight:normal;">(Max Level: ${levelScale})</small></h5>
-                        ${type.description ? `<p style="font-size:0.9em; color:#555; margin-top:0; margin-bottom:8px;">${type.description}</p>` : ''}
-                        <div style="display:flex; align-items:center; margin-bottom:8px;">
-                            <label for="level-select-${competencyTypeId}" style="margin-right:10px;">3. Assess Level:</label>
-                            <select id="level-select-${competencyTypeId}" class="competency-level-select-single" data-type-id="${competencyTypeId}" data-category-id="${category.id}" style="padding:5px;">
-                                <option value="">-- Select Level --</option>`;
-    for (let i = 1; i <= levelScale; i++) {
-        fieldsHTML += `<option value="${i}" ${currentAssessedLevel === i ? 'selected' : ''}>Level ${i}</option>`;
-    }
-    fieldsHTML += `       </select>
-                            <div id="level-desc-display-${competencyTypeId}" style="margin-left:15px; font-size:0.85em; color:#444; font-style:italic; max-width:400px;">
-                                ${currentAssessedLevel && Array.isArray(type.levelDescriptions) && type.levelDescriptions[currentAssessedLevel - 1] ? type.levelDescriptions[currentAssessedLevel - 1] : ''}
-                            </div>
-                        </div>
-                        <div>
-                            <label for="evidence-text-${competencyTypeId}" style="display:block; margin-bottom:3px;">4. Evidence/Comments:</label>
-                            <textarea id="evidence-text-${competencyTypeId}" rows="3" style="width:98%; padding:5px; border:1px solid #ccc;" placeholder="Provide specific examples or comments...">${currentEvidence}</textarea>
-                        </div>
-                        <button id="save-single-competency-assessment-button-${competencyTypeId}" class="setting-button save-single-competency-button" style="margin-top:15px;" data-competency-type-id="${competencyTypeId}" data-category-id="${category.id}">Save This Competency Assessment</button>
-                     </div>`;
-    
-    container.innerHTML = fieldsHTML;
-    console.log(`[DEBUG] renderSingleCompetencyAssessmentFields: Rendered fields for type ${type.name}.`);
-
-    const levelSelectElement = document.getElementById(`level-select-${competencyTypeId}`);
-    if (levelSelectElement) { 
-        levelSelectElement.addEventListener('change', (event) => {
-            const selectedLevel = parseInt(event.target.value);
-            const descDisplayDiv = document.getElementById(`level-desc-display-${competencyTypeId}`);
-            // Find the category and type again (or pass type object directly if safe)
-            const currentCategory = configurableCompetencyCategories.find(cat => cat.id === category.id);
-            const currentType = currentCategory ? currentCategory.types.find(t => t.id === type.id) : null;
-
-            if (descDisplayDiv && currentType && Array.isArray(currentType.levelDescriptions)) {
-                descDisplayDiv.textContent = selectedLevel && currentType.levelDescriptions[selectedLevel - 1] 
-                                            ? currentType.levelDescriptions[selectedLevel - 1]
-                                            : (selectedLevel ? `Level ${selectedLevel} - No description defined.` : '');
-            } else if (descDisplayDiv) {
-                descDisplayDiv.textContent = selectedLevel ? `Level ${selectedLevel}` : '';
-            }
-        });
-    }
-
-    const saveSingleButton = document.getElementById(`save-single-competency-assessment-button-${competencyTypeId}`);
-    if (saveSingleButton) { 
-        saveSingleButton.addEventListener('click', (event) => {
-            const typeIdToSave = event.target.dataset.competencyTypeId;
-            // const categoryIdOfSavedType = event.target.dataset.categoryId; // Already have 'category.id'
-            const assessedLevelValue = parseInt(document.getElementById(`level-select-${typeIdToSave}`).value) || null;
-            const evidenceText = document.getElementById(`evidence-text-${typeIdToSave}`).value.trim();
-
-            if (assessedLevelValue === null) { 
-                alert('Please select a level for the competency.');
-                return; 
-            }
-
-            const assessmentEntry = {
-                competencyTypeId: typeIdToSave,
-                categoryId: category.id, // Use category.id passed to function
-                assessedLevel: assessedLevelValue,
-                evidence: evidenceText,
-                assessmentDate: new Date().toISOString()
-            };
-
-            const existingAssessmentIndex = employee.assessedCompetencies.findIndex(ac => ac.competencyTypeId === typeIdToSave);
-            if (existingAssessmentIndex > -1) {
-                employee.assessedCompetencies[existingAssessmentIndex] = assessmentEntry;
-            } else {
-                employee.assessedCompetencies.push(assessmentEntry);
-            }
-            persistEmployeeData();
-            alert(`Assessment for competency type '${type.name}' saved successfully for ${employee.name}!`);
-            
-            const assessedListContainerUpdate = document.getElementById('current-employee-competencies-list-container');
-            if (assessedListContainerUpdate) {
-                 renderEmployeeAssessedCompetenciesList(employee, assessedListContainerUpdate);
-            }
-            // Also update orbs/chart if they were present
-            // renderCompetencyOrbsDisplay(employee, document.getElementById('competency-orbs-display-area')); 
-
-            container.innerHTML = `<p style="color:green; padding:10px;">Assessment for '${type.name}' saved. Select another category/type or re-select this one to update.</p>`;
-        });
-    }
-}
 
 // Main function to display the entire competency assessment UI for an employee
 function displayEmployeeCompetencyAssessmentUI(assessmentAreaContainer, employeeId) {
@@ -4078,8 +3837,7 @@ function renderCompetenciesSection() {
 
 // Comment out or remove renderCompetencyOrbsDisplay and renderCompetencyRadarChart
 /*
-function renderCompetencyOrbsDisplay(employee, orbsDisplayContainer) { ... }
-function renderCompetencyRadarChart(employee) { ... }
+
 */
 
 // This should be the current version of renderEmployeeAssessedCompetenciesList
