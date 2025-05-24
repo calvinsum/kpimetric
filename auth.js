@@ -1,5 +1,5 @@
-// src/auth.js
-import { auth, provider, signInWithPopup } from './firebase.js'; // relative to src/
+import { auth, provider, signInWithPopup } from './firebase.js';
+import { signOut } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
 function handleLogin() {
   signInWithPopup(auth, provider)
@@ -7,11 +7,9 @@ function handleLogin() {
       const user = result.user;
       if (!user.email.endsWith('@storehub.com')) {
         alert("Only company emails allowed.");
-        // Optionally sign out:
         auth.signOut();
       } else {
         console.log("Logged in as:", user.email);
-        // proceed to app
       }
     })
     .catch((error) => {
@@ -19,4 +17,34 @@ function handleLogin() {
     });
 }
 
-export { handleLogin };
+function handleLogout() {
+  signOut(auth)
+    .then(() => {
+      console.log("Logged out");
+      location.reload();
+    })
+    .catch((error) => {
+      console.error("Logout failed:", error);
+    });
+}
+
+export { handleLogin, handleLogout };
+import { auth } from './firebase.js';
+import { signOut } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+
+function handleLogin() {
+  // your existing login code
+}
+
+function handleLogout() {
+  signOut(auth)
+    .then(() => {
+      console.log("Logged out");
+      // optionally reload the page or reset UI
+    })
+    .catch((error) => {
+      console.error("Logout failed:", error);
+    });
+}
+
+export { handleLogin, handleLogout };
