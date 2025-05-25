@@ -541,8 +541,10 @@ button[id^="back-to-role-list-button"]:hover {
 html, body {
     margin: 0;
     padding: 0;
+    width: 100%;
     height: 100%;
-  }
+    overflow: hidden; /* Prevent scrolling if not needed for login screen */
+}
   
   #login-screen {
     display: flex;
@@ -568,6 +570,21 @@ html, body {
     align-items: center;
     justify-content: center;
     min-width: 300px;
+    gap: 20px;
   }
   
+  #login-button {
+    padding: 12px 25px;
+    font-size: 1.1em;
+    background-color: #4285F4; /* Google blue example */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#login-button:hover {
+    background-color: #357ae8;
+}
   
