@@ -62,13 +62,17 @@
 </head>
 <body>
     <!-- Login Screen -->
-<div id="login-screen">
-    <div style="display: flex; height: 100%; justify-content: center; align-items: center; width: 100%;">
-    <div class="login-container">
-      <h1>Welcome to KeyMetric</h1>
-      <button id="login-button">Sign in with Google</button>
-    </div>
-  </div>
+    <div id="login-screen">
+        <div class="login-container">
+          <div class="login-left">
+            <h1>Welcome to KeyMetric</h1>
+            <button id="login-button">Sign in with Google</button>
+          </div>
+          <div class="login-right">
+            <img src="https://i.imgur.com/eN1oRHq.png" alt="Login Illustration" />
+          </div>
+        </div>
+      </div>    
     <!-- Main App Container -->
     <div id="app-container" class="app-container">
         <aside class="sidebar">
@@ -139,5 +143,24 @@
           }
         });
       </script>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script type="module" src="./script.js"></script>
+  <script type="module">
+    import { handleLogin } from './auth.js';
+
+    const loginBtn = document.getElementById('login-button');
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
+
+    loginBtn.addEventListener('click', async () => {
+      try {
+        await handleLogin();
+        loginScreen.style.display = 'none';
+        appContainer.style.display = 'flex';
+      } catch (err) {
+        console.error('Login failed:', err);
+      }
+    });
+  </script>
 </body>
 </html>
