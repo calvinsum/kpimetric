@@ -10,6 +10,7 @@ import {
     deleteDoc,
     query,    // <--- Added
     where     // <--- Added
+    runTransaction
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
@@ -1131,15 +1132,63 @@ async function saveEmployee(employeeObject) {
 
 // Add a SINGLE new employee to Firestore AND the local employeeData array
 async function addEmployee(newEmployeeObject) {
-    try {
-        const docRef = await addDoc(collection(db, "employees"), newEmployeeObject);
-        const employeeWithId = { id: docRef.id, ...newEmployeeObject };
-        employeeData.push(employeeWithId); 
-        console.log('Employee added to Firestore with ID:', docRef.id);
-        return employeeWithId; 
-    } catch (error) {
-        console.error('Error adding employee to Firestore:', error);
+    const employeeCode = newEmployeeObject.employeeCode;
+
+    if (!employeeCode) { // Basic validation
+        console.error("[addEmployee] Employee code is undefined or empty.");
+        alert("Employee code is required.");
         return null;
+    }
+
+    try {
+        let newDocId = null; // To store the new document's Firestore-generated ID
+
+        // Use a transaction to ensure atomic read (check) and write (create)
+        await runTransaction(db, async (transaction) => {
+            const employeesCollectionRef = collection(db, "employees");
+            // Query for existing employee with the same employeeCode
+            const q = query(employeesCollectionRef, where("employeeCode", "==", employeeCode));
+            
+            // Perform the read operation within the transaction
+            const snapshot = await transaction.get(q); 
+
+            if (!snapshot.empty) {
+                // If snapshot is not empty, a document with this employeeCode already exists.
+                // Throwing an error here will cause the transaction to fail and roll back.
+                throw new Error(`An employee with Code/ID "${employeeCode}" already exists.`);
+            }
+
+            // If we are here, employeeCode is unique at this point in the transaction.
+            // Create a new document reference WITH AN AUTO-GENERATED ID.
+            const newEmployeeDocRef = doc(collection(db, "employees"));
+            newDocId = newEmployeeDocRef.id; // Capture the auto-generated ID to use later
+
+            // Perform the write operation within the transaction
+            transaction.set(newEmployeeDocRef, newEmployeeObject); 
+        });
+
+        // If the transaction was successful, newDocId will be set.
+        if (newDocId) {
+            const employeeWithId = { ...newEmployeeObject, id: newDocId }; // Add the new ID to the object
+            employeeData.push(employeeWithId); // Update local data store for the current user
+            console.log('[addEmployee] Employee added to Firestore (via transaction) and local data:', employeeWithId);
+            return employeeWithId; // Return the employee object with its Firestore ID
+        } else {
+            // This case should ideally not be reached if errors in transaction are handled correctly.
+            console.error("[addEmployee] Transaction seemed to complete, but newDocId was not set.");
+            return null;
+        }
+
+    } catch (error) {
+        console.error("Error in addEmployee transaction: ", error.message);
+        // Display the specific error from the transaction (e.g., if it's the "already exists" error)
+        // or a generic error.
+        if (error.message && error.message.includes("already exists")) {
+            alert(error.message);
+        } else {
+            alert("Failed to add employee. An error occurred with the database operation.");
+        }
+        return null; // Indicate failure
     }
 }
 
@@ -2934,22 +2983,16 @@ async function renderAddEditEmployeeForm(formContainer, employeeIdToEdit = null,
                         return; 
                     }
                 } else { // ADDING NEW EMPLOYEE
-                    // Check for duplicate employeeCode in Firestore before adding
-                    // This uses the user-defined employeeCode
-                    const q = query(collection(db, "employees"), where("employeeCode", "==", employeeCode));
-                    const querySnapshot = await getDocs(q);
-                    if (!querySnapshot.empty) {
-                        alert(`An employee with Code/ID \"${employeeCode}\" already exists in Firestore. Please use a unique one.`);
-                        // isSavingEmployee = false; // Handled by finally
-                        return;
-                    }
-
-                    const addedEmployee = await addEmployee(employeeObject); // addEmployee handles Firestore & local array
+                    // The duplicate employeeCode check is now handled by the addEmployee function using a transaction.
+                    
+                    const addedEmployee = await addEmployee(employeeObject); // employeeObject contains .employeeCode
+                    
                     if (addedEmployee) {
                         alert('Employee added successfully!');
+                        // UI will be updated by the calling code after this block
                     } else {
-                        alert('Error adding employee. Check console.');
-                        // isSavingEmployee = false; // Handled by finally
+                        // addEmployee function now shows its own more specific alerts.
+                        // The 'isSavingEmployee' flag is reset in the 'finally' block.
                         return; // Stop further processing on error
                     }
                 }
