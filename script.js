@@ -2,6 +2,7 @@ const kpiDataAllRoles = [{"roleName":"Onboarding Team Lead","kpis":[{"name":"Go 
 
 import { handleLogin, handleLogout } from './auth.js';
 import { db, auth } from './firebase.js';
+import { collection, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 document.getElementById('login-button').addEventListener('click', handleLogin);
@@ -1061,51 +1062,91 @@ function saveEditableSettingsDetails() {
 // --- Initialization ---
 const initialKpiData = JSON.parse(JSON.stringify(kpiDataAllRoles));
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadKpiData(); 
-    loadEmployeeData(); // Load employee data on DOM ready
-    loadPerformanceRecords(); // Load performance records on DOM ready
-    loadInputTypes(); // ADDED THIS LINE
-    loadDepartments(); // ADD THIS LINE
-    loadCompetencyCategories(); // ADD THIS LINE
+document.addEventListener('DOMContentLoaded', async () => { // Make this async
+    // ...
+    await loadKpiData(); // If this is async too
+    await loadEmployeeData(); // <<<< MAKE SURE THIS IS CALLED AND AWAITED
+    await loadPerformanceRecords(); // If async
+    await loadInputTypes(); // If async
+    await loadDepartments(); // If async
+    await loadCompetencyCategories(); // If async
+    
     showSection(calculatorSection); 
-    // navCalculator.classList.add('active'); // showSection handles active class
     populateRoleSelector(currentKpiData); 
     
-    // Ensure settings are rendered if settings tab is directly targeted or reloaded
-    // The renderSettings() call was inside the navSettings click listener, 
-    // but if settings is the default or shown by other means, it might need to be called.
-    // For now, clicking the tab explicitly calls renderSettings which is fine.
-    // If navSettings was set to active by default, then renderSettings() should be called here too.
+    // Call renderEmployeeSection AFTER data is loaded if it depends on employeeData
+    // If renderEmployeeSection itself calls renderEmployeeList which uses employeeData,
+    // then employeeData must be populated before renderEmployeeSection is called.
+    renderEmployeeSection(); 
 });
 
 // --- Employee Data Management ---
-function loadEmployeeData() {
-    const savedEmployeeData = localStorage.getItem('kpiAppEmployeeData');
-    if (savedEmployeeData) {
-        try {
-            const parsedData = JSON.parse(savedEmployeeData);
-            // Add basic validation if needed, e.g., check if it's an array
-            if (Array.isArray(parsedData)) {
-                employeeData = parsedData;
-            } else {
-                console.warn('Saved employee data is not in the expected array format. Using defaults.');
-                employeeData = []; // Default to empty array if format is wrong
-                localStorage.setItem('kpiAppEmployeeData', JSON.stringify(employeeData));
-            }
-        } catch (error) {
-            console.error('Error parsing saved employee data:', error, 'Using defaults.');
-            employeeData = []; // Default to empty array on error
-            localStorage.setItem('kpiAppEmployeeData', JSON.stringify(employeeData));
-        }
-    } else {
-        // If no data saved, initialize with an empty array and save it
-        employeeData = [];
-        localStorage.setItem('kpiAppEmployeeData', JSON.stringify(employeeData));
+async function loadEmployeeData() {
+    employeeData = []; // Clear local array before loading
+    try {
+        const querySnapshot = await getDocs(collection(db, "employees"));
+        querySnapshot.forEach((docSnap) => {
+            employeeData.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        console.log('Employee data loaded from Firestore:', employeeData);
+    } catch (error) {
+        console.error('Error loading employee data from Firestore:', error);
+        employeeData = []; // Reset to empty on error
     }
-    console.log('Employee data loaded:', employeeData);
 }
 
+// Save/Update a SINGLE employee in Firestore
+async function saveEmployee(employeeObject) {
+    if (!employeeObject.id) {
+        console.error("Attempting to save employee without an ID for setDoc:", employeeObject);
+        alert("Error: Cannot save employee without an ID.");
+        return null;
+    }
+    try {
+        await setDoc(doc(db, "employees", employeeObject.id), employeeObject);
+        console.log('Employee saved/updated in Firestore:', employeeObject.id);
+        // Optional: Update local array if this function is called directly after a local modification
+        // For example, if you modify an employee object and then call saveEmployee(modifiedEmp)
+        const index = employeeData.findIndex(emp => emp.id === employeeObject.id);
+        if (index !== -1) {
+            employeeData[index] = employeeObject;
+        } else {
+            // This case should ideally not happen if ID exists, implies inconsistency
+            employeeData.push(employeeObject); 
+        }
+        return employeeObject;
+    } catch (error) {
+        console.error('Error saving employee to Firestore:', error);
+        return null;
+    }
+}
+
+// Add a SINGLE new employee to Firestore AND the local employeeData array
+async function addEmployee(newEmployeeObject) {
+    try {
+        const docRef = await addDoc(collection(db, "employees"), newEmployeeObject);
+        const employeeWithId = { id: docRef.id, ...newEmployeeObject };
+        employeeData.push(employeeWithId); 
+        console.log('Employee added to Firestore with ID:', docRef.id);
+        return employeeWithId; 
+    } catch (error) {
+        console.error('Error adding employee to Firestore:', error);
+        return null;
+    }
+}
+
+// Delete a SINGLE employee from Firestore AND the local employeeData array
+async function deleteEmployee(employeeId) {
+    try {
+        await deleteDoc(doc(db, "employees", employeeId));
+        employeeData = employeeData.filter(emp => emp.id !== employeeId); 
+        console.log('Employee deleted from Firestore:', employeeId);
+    } catch (error) {
+        console.error('Error deleting employee from Firestore:', error);
+    }
+}
+
+// --- End of Firestore Employee Data Management Functions ---
 
 // --- Render Employee Section (Initial) ---
 function renderEmployeeSection() {
@@ -1163,6 +1204,7 @@ function renderEmployeeSection() {
     });
 }
 
+// This is your existing function, modified:
 function renderEmployeeList(container) {
     if (!container) { console.error("[renderEmployeeList] Container not found."); return; }
 
@@ -1170,12 +1212,12 @@ function renderEmployeeList(container) {
                             document.getElementById('employee-role-filter').value.toLowerCase() : '';
     const nameFilterValue = document.getElementById('employee-name-filter') ? 
                             document.getElementById('employee-name-filter').value.toLowerCase() : '';
-    const departmentFilterValue = document.getElementById('employee-department-filter') ? // Get department filter value
+    const departmentFilterValue = document.getElementById('employee-department-filter') ? 
                                   document.getElementById('employee-department-filter').value.toLowerCase() : '';
 
     console.log(`[renderEmployeeList] Filters - Role: '${roleFilterValue}', Name: '${nameFilterValue}', Dept: '${departmentFilterValue}'`);
 
-    let filteredEmployees = employeeData;
+    let filteredEmployees = employeeData; // employeeData is now sourced from Firestore via loadEmployeeData
 
     if (roleFilterValue) {
         filteredEmployees = filteredEmployees.filter(emp => 
@@ -1187,7 +1229,7 @@ function renderEmployeeList(container) {
             emp.name && emp.name.toLowerCase().includes(nameFilterValue)
         );
     }
-    if (departmentFilterValue) { // Apply department filter
+    if (departmentFilterValue) { 
         filteredEmployees = filteredEmployees.filter(emp => 
             emp.department && emp.department.toLowerCase().includes(departmentFilterValue)
         );
@@ -1206,10 +1248,10 @@ function renderEmployeeList(container) {
 
     let listHTML = '<ul id="existing-employees-list" style="list-style: none; padding: 0;">';
     filteredEmployees.forEach((employee) => {
-        // Find the original index in the main employeeData array for stable editing/deleting
-        const originalIndex = employeeData.findIndex(emp => emp.id === employee.id);
-        if (originalIndex === -1) return; // Should not happen if data is consistent
-
+        // IMPORTANT: We use employee.id (from Firestore) directly now.
+        // The originalIndex logic might be less reliable if the main employeeData array
+        // is re-ordered or if IDs are not perfectly managed. Using employee.id is safer.
+        
         listHTML += `
             <li style="margin-bottom: 10px; padding: 15px; background-color: #f9f9f9; border: 1px solid #eee; border-radius: 5px;">
                 <div><strong>ID:</strong> ${employee.id}</div>
@@ -1217,8 +1259,8 @@ function renderEmployeeList(container) {
                 <div><strong>Role:</strong> ${employee.role}</div>
                 <div><strong>Department:</strong> ${employee.department || 'N/A'}</div>
                 <div class="employee-actions" style="margin-top: 10px;">
-                    <button class="edit-employee-button" data-employee-idx="${originalIndex}" style="margin-right: 8px;">Edit</button>
-                    <button class="delete-employee-button" data-employee-idx="${originalIndex}" style="background-color: #e74c3c; color: white;">Delete</button>
+                    <button class="edit-employee-button" data-employee-id="${employee.id}" style="margin-right: 8px;">Edit</button>
+                    <button class="delete-employee-button" data-employee-id="${employee.id}" style="background-color: #e74c3c; color: white;">Delete</button>
                 </div>
             </li>
         `;
@@ -1226,22 +1268,42 @@ function renderEmployeeList(container) {
     listHTML += '</ul>';
     container.innerHTML = listHTML;
 
+    // EDIT BUTTON LOGIC
     document.querySelectorAll('.edit-employee-button').forEach(button => {
         button.addEventListener('click', (event) => {
-            const employeeOriginalIndex = parseInt(event.target.dataset.employeeIdx);
+            const employeeIdToEdit = event.target.dataset.employeeId;
+            // Find the original index using the ID, which is safer
+            const employeeOriginalIndex = employeeData.findIndex(emp => emp.id === employeeIdToEdit);
+            if (employeeOriginalIndex === -1) {
+                alert("Error: Could not find employee to edit.");
+                return;
+            }
             const formContainer = document.getElementById('add-edit-employee-form-container');
             renderAddEditEmployeeForm(formContainer, employeeOriginalIndex, container); 
         });
     });
 
+    // DELETE BUTTON LOGIC (MODIFIED)
     document.querySelectorAll('.delete-employee-button').forEach(button => {
-        button.addEventListener('click', (event) => {
-            const employeeOriginalIndex = parseInt(event.target.dataset.employeeIdx);
-            const employeeToDelete = employeeData[employeeOriginalIndex];
+        button.addEventListener('click', async (event) => { // <--- Make this async
+            const employeeIdToDelete = event.target.dataset.employeeId;
+            const employeeToDelete = employeeData.find(emp => emp.id === employeeIdToDelete); // Find by ID
+
+            if (!employeeToDelete) {
+                alert("Error: Could not find employee to delete.");
+                return;
+            }
+
             if (confirm(`Are you sure you want to delete employee "${employeeToDelete.name}" (ID: ${employeeToDelete.id})?`)) {
-                employeeData.splice(employeeOriginalIndex, 1);
-                persistEmployeeData();
-                renderEmployeeList(container); 
+                // NEW WAY (Firestore):
+                await deleteEmployee(employeeIdToDelete); // Deletes from Firestore and local array
+                
+                // No need to call loadEmployeeData() here if deleteEmployee correctly updates the local array
+                // and you only want to re-render based on the modified local array.
+                // If you want to be absolutely sure and fetch fresh from Firestore:
+                // await loadEmployeeData();
+                
+                renderEmployeeList(container); // Re-render the list from the (now updated) local employeeData
                 alert(`Employee "${employeeToDelete.name}" deleted successfully.`);
             }
         });
@@ -2707,37 +2769,37 @@ function displayRolePerformanceComparison(selectedRoleName) {
 
 // MANUALLY REPLACE your existing renderAddEditEmployeeForm function with this:
 
-function renderAddEditEmployeeForm(formContainer, employeeIndex = null, mainListContainerForRefresh) {
+// Original function: function renderAddEditEmployeeForm(formContainer, employeeIndex = null, mainListContainerForRefresh) {
+// We'll change employeeIndex to employeeIdToEdit for clarity when editing with Firestore IDs.
+// If employeeIdToEdit is null, it's an "add" operation.
+async function renderAddEditEmployeeForm(formContainer, employeeIdToEdit = null, mainListContainerForRefresh) {
     if (!formContainer) {
         console.error("[renderAddEditEmployeeForm] Form container not found.");
         return;
     }
-    const isEditing = employeeIndex !== null;
-    const employee = isEditing ? employeeData[employeeIndex] : null;
+    const isEditing = employeeIdToEdit !== null;
+    const employee = isEditing ? employeeData.find(emp => emp.id === employeeIdToEdit) : null;
 
-    console.log(`[renderAddEditEmployeeForm] Called. Editing: ${isEditing}, Employee Index: ${employeeIndex}`);
+    if (isEditing && !employee) {
+        alert("Error: Employee to edit not found in local data. Please refresh.");
+        console.error(`[renderAddEditEmployeeForm] Employee with ID ${employeeIdToEdit} not found for editing.`);
+        return;
+    }
+
+    console.log(`[renderAddEditEmployeeForm] Called. Editing: ${isEditing}, Employee ID: ${employeeIdToEdit}`);
 
     const roleNames = currentKpiData.map(role => role.roleName);
-    // REMOVED: const tempDepartments = [...] 
 
     if (roleNames.length === 0) {
         alert("No roles configured. Please add roles in Settings before adding/editing employees.");
-        formContainer.innerHTML = '<p>Cannot add/edit employee: No roles found. Please configure roles in Settings first.</p>';
-        formContainer.style.display = 'block';
-        setTimeout(() => { 
-            if (formContainer.innerHTML.includes("Cannot add/edit employee")) {
-                formContainer.style.display = 'none'; 
-                formContainer.innerHTML = '';
-            } 
-        }, 4000);
+        // ... (your existing handling for no roles) ...
         return;
     }
     
-    // Generate department options from configurableDepartments
     let departmentOptionsHTML = '';
-    if (configurableDepartments && configurableDepartments.length > 0) {
+    // ... (your existing departmentOptionsHTML logic - looks fine) ...
+     if (configurableDepartments && configurableDepartments.length > 0) {
         departmentOptionsHTML = configurableDepartments.map(dept => 
-            // We store and use dept.name as the value for consistency with how role is stored
             `<option value="${dept.name}" ${employee && employee.department === dept.name ? 'selected' : ''}>${dept.name}</option>`
         ).join('');
         departmentOptionsHTML = '<option value="">-- Select a Department --</option>' + departmentOptionsHTML;
@@ -2745,15 +2807,21 @@ function renderAddEditEmployeeForm(formContainer, employeeIndex = null, mainList
         departmentOptionsHTML = '<option value="" disabled>No departments configured in Settings.</option>';
     }
 
-    const baseId = isEditing && employee ? employee.id.replace(/\s+/g, '-') : 'new';
-    const formIdPrefix = `employee-form-${baseId}-${Date.now()}`;
+
+    // For the form's "Employee ID" field:
+    // If editing, this field shows employee.employeeCode (user-defined ID) and is readonly.
+    // If adding, user can input a new employeeCode.
+    // The actual Firestore document ID (employee.id) is used behind the scenes for editing.
+    const employeeCodeValue = employee ? (employee.employeeCode || employee.id || '') : ''; // Prefer employeeCode, fallback to id if it's an old record, or empty for new
+    const formIdPrefix = `employee-form-${isEditing ? employeeIdToEdit.replace(/\s+/g, '-') : 'new'}-${Date.now()}`;
+
 
     let formHTML = `
         <h4>${isEditing ? 'Edit Employee' : 'Add New Employee'}</h4>
         <div class="kpi-form-field">
-            <label for="${formIdPrefix}-id">Employee ID:</label>
-            <input type="text" id="${formIdPrefix}-id" value="${employee ? employee.id : ''}" ${isEditing ? 'readonly' : ''} required>
-            ${isEditing ? '<small>Employee ID cannot be changed.</small>' : ''}
+            <label for="${formIdPrefix}-code">Employee Code/ID:</label> <!-- Changed label -->
+            <input type="text" id="${formIdPrefix}-code" value="${employeeCodeValue}" ${isEditing && employee.employeeCode ? 'readonly' : ''} required>
+            ${isEditing && employee.employeeCode ? '<small>Employee Code cannot be changed.</small>' : (isEditing ? '<small>Firestore ID (readonly): ' + employee.id + '</small>' : '<small>Enter a unique company ID/code.</small>')}
         </div>
         <div class="kpi-form-field">
             <label for="${formIdPrefix}-name">Employee Name:</label>
@@ -2768,7 +2836,7 @@ function renderAddEditEmployeeForm(formContainer, employeeIndex = null, mainList
         </div>
         <div class="kpi-form-field">
             <label for="${formIdPrefix}-department">Department:</label>
-            <select id="${formIdPrefix}-department" ${configurableDepartments.length === 0 ? 'disabled' : ''} required>
+            <select id="${formIdPrefix}-department" ${configurableDepartments.length === 0 ? 'disabled' : ''}> <!-- Removed required if no departments -->
                 ${departmentOptionsHTML}
             </select>
             ${configurableDepartments.length === 0 ? '<p style="font-size:0.85em; color:orange; margin-top:5px;">Please set up Departments in Settings first to assign one.</p>' : ''}
@@ -2784,70 +2852,82 @@ function renderAddEditEmployeeForm(formContainer, employeeIndex = null, mainList
 
     const saveButton = document.getElementById(`${formIdPrefix}-save-button`);
     const cancelButton = document.getElementById(`${formIdPrefix}-cancel-button`);
-    const employeeIdInput = document.getElementById(`${formIdPrefix}-id`);
+    const employeeCodeInput = document.getElementById(`${formIdPrefix}-code`); // Changed ID from -id to -code
     const employeeNameInput = document.getElementById(`${formIdPrefix}-name`);
     const selectedRoleSelect = document.getElementById(`${formIdPrefix}-role`);
     const selectedDepartmentSelect = document.getElementById(`${formIdPrefix}-department`); 
 
-    if (cancelButton) { 
-        cancelButton.addEventListener('click', () => {
-            formContainer.innerHTML = '';
-            formContainer.style.display = 'none';
-        });
-    }
-
-    if (saveButton && employeeIdInput && employeeNameInput && selectedRoleSelect && selectedDepartmentSelect) {
-        saveButton.addEventListener('click', () => {
-            const employeeId = employeeIdInput.value.trim();
+    if (cancelButton) { /* ... your existing cancel logic ... */ }
+    
+    if (saveButton && employeeCodeInput && employeeNameInput && selectedRoleSelect && selectedDepartmentSelect) {
+        saveButton.addEventListener('click', async () => { // <--- MAKE ASYNC
+            const employeeCode = employeeCodeInput.value.trim(); // This is the user-defined ID/Code
             const employeeName = employeeNameInput.value.trim();
             const selectedRole = selectedRoleSelect.value;
             const selectedDepartment = selectedDepartmentSelect.value;
 
-            if (!employeeId) { alert("Employee ID cannot be empty."); return; }
+            if (!employeeCode && !isEditing) { alert("Employee Code/ID cannot be empty when adding."); return; } // Allow empty if just name etc for editing
             if (!employeeName) { alert("Employee Name cannot be empty."); return; }
             if (!selectedRole) { alert("Please select a role for the employee."); return; }
             
-            // Updated validation for department:
-            // If departments are configured, a selection is required.
-            // If no departments are configured, selectedDepartment will be "" (from the disabled option) which is acceptable.
             if (configurableDepartments.length > 0 && !selectedDepartment) { 
-                alert("Please select a department for the employee."); return; 
+                alert("Please select a department for the employee (or configure departments in Settings)."); return; 
             }
 
-            if (!isEditing) {
-                const idExists = employeeData.some(emp => emp.id === employeeId);
-                if (idExists) {
-                    alert(`Employee ID "${employeeId}" already exists. Please use a unique ID.`);
-                    return;
-                }
-            }
-
-            const employeeEntry = {
-                id: employeeId,
+            // Prepare the base employee object (without Firestore ID for new ones)
+            let employeeObject = {
+                employeeCode: employeeCode, // Store the user-defined code
                 name: employeeName,
                 role: selectedRole,
-                // If no departments configured, selectedDepartment will be empty string from the disabled option value
-                department: configurableDepartments.length > 0 ? selectedDepartment : '' 
+                department: configurableDepartments.length > 0 ? selectedDepartment : '',
+                // IMPORTANT: Preserve assessedCompetencies when editing
+                assessedCompetencies: (isEditing && employee && employee.assessedCompetencies) ? employee.assessedCompetencies : []
             };
 
             if (isEditing) {
-                if (employeeIndex !== null && employeeIndex >= 0 && employeeIndex < employeeData.length) {
-                    employeeData[employeeIndex] = employeeEntry;
-                    alert('Employee details updated successfully!');
+                if (employee && employee.id) { // Ensure we have the Firestore document ID
+                    employeeObject.id = employee.id; // Add Firestore document ID for update
+
+                    // Check if user-defined employeeCode is being changed (if it was editable for editing)
+                    // For now, assuming employeeCode is readonly if it exists.
+                    // If you allow editing employeeCode, you'd need to check for duplicates here too.
+
+                    const updatedEmployee = await saveEmployee(employeeObject); // saveEmployee handles Firestore & local array
+                    if (updatedEmployee) {
+                        alert('Employee details updated successfully!');
+                    } else {
+                        alert('Error updating employee. Check console.');
+                        return; // Stop further processing on error
+                    }
                 } else {
-                    alert('Error updating employee: Invalid index.');
-                    console.error('Error updating employee: Invalid index ', employeeIndex);
+                    alert('Error updating employee: Missing Firestore document ID.');
+                    console.error('Error updating employee: Missing employee.id for editing.');
                     return; 
                 }
-            } else {
-                employeeData.push(employeeEntry);
-                alert('Employee added successfully!');
+            } else { // ADDING NEW EMPLOYEE
+                // Check for duplicate employeeCode in Firestore before adding
+                const q = query(collection(db, "employees"), where("employeeCode", "==", employeeCode));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    alert(`An employee with Code/ID "${employeeCode}" already exists in Firestore. Please use a unique one.`);
+                    return;
+                }
+
+                const addedEmployee = await addEmployee(employeeObject); // addEmployee handles Firestore & local array
+                if (addedEmployee) {
+                    alert('Employee added successfully!');
+                } else {
+                    alert('Error adding employee. Check console.');
+                    return; // Stop further processing on error
+                }
             }
             
-            persistEmployeeData();
+            // Common actions after successful save/add
             formContainer.innerHTML = '';
             formContainer.style.display = 'none';
             
+            // Re-render the list from the updated local employeeData
+            // No need for await loadEmployeeData() here if addEmployee/saveEmployee sync local data correctly.
             if(mainListContainerForRefresh){
                 renderEmployeeList(mainListContainerForRefresh);
             } else { 
@@ -2856,7 +2936,7 @@ function renderAddEditEmployeeForm(formContainer, employeeIndex = null, mainList
             }
         });
     } else {
-        console.error("[renderAddEditEmployeeForm] Could not attach save listener: one or more critical form elements for save button not found after rendering form.");
+        console.error("[renderAddEditEmployeeForm] Could not attach save listener: one or more critical form elements for save button not found.");
     }
 }
 // The rest of script.js should follow or precede this, ensuring function scope and call order are correct.
@@ -3662,9 +3742,22 @@ function displayEmployeeCompetencyReport() {
 
 // Ensure this is defined, as it's called by renderSingleCompetencyAssessmentFields
 // and renderEmployeeAssessedCompetenciesList
-function persistEmployeeData() {
-    localStorage.setItem('kpiAppEmployeeData', JSON.stringify(employeeData));
-    console.log('Employee data persisted to local storage.');
+async function persistEmployeeData() { // This function will now save the entire employeeData array to Firestore
+    try {
+        for (const emp of employeeData) {
+            if (!emp.id) { // This case should ideally be handled by addEmployee for new employees
+                console.error("Trying to persist employee without an ID:", emp);
+                // Potentially generate an ID here or skip, depending on your logic
+                // For now, we'll assume new employees are added via addEmployee
+                continue; 
+            }
+            // Use emp.id as the document ID in Firestore
+            await setDoc(doc(db, "employees", emp.id), emp);
+        }
+        console.log('Employee data persisted to Firestore.');
+    } catch (error) {
+        console.error('Error saving employee data to Firestore:', error);
+    }
 }
 
 // Helper function to render level description fields (used by renderSingleCompetencyAssessmentFields)
