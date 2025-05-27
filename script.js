@@ -9,7 +9,7 @@ import {
     addDoc, 
     deleteDoc,
     query,    // <--- Added
-    where     // <--- Added
+    where,     // <--- Added
     runTransaction
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
