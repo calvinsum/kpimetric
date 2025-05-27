@@ -13,6 +13,7 @@ import {
     runTransaction
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
+import { writeBatch, doc, collection } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
 const kpiDataAllRoles = [{"roleName":"Onboarding Team Lead","kpis":[{"name":"Go Live Rate","remarks":"No. of Accounts Go Live ≥ 10 txn / No. of Accounts in New Stage to Go Live Stage.","weightage":25,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":69}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Installation SLA","remarks":"Installation conducted on merchant requested date.","weightage":20,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":79}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":84}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":85,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Training Utilization Rate","remarks":"Total Monthly Slots for Training \\n= 1.75 trainings per day x 20 days x 5 OC \\n= 175 slots\\n\\nTotal Monthly Training (excluding Quick Guides) / Total Monthly Slots for Training \\n= Utilisation rate (%)","weightage":20,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lt","value":70}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Onboarding CSAT","remarks":"CSAT survey related to onboarding.","weightage":25,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lt","value":69}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"First 30 Days Go Live Care Ticket ≤ 5","remarks":"Merchant ticket escalation related to onboarding after go live ≤ 5","weightage":10,"maxRating":5,"inputType":"percentage_compliance","lowerIsBetter":false,"comment":"Input is compliance % for '≤ 5 tickets'. Higher % is better.","performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":74}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":75,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":85}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":86,"upper":90}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gte","value":91}}]}]},/* Rest of kpiDataAllRoles JSON */];
  
@@ -3163,27 +3164,28 @@ function renderDepartmentSetupForm(container, editModeData = null) {
         });
     });
     document.querySelectorAll('.delete-department-button').forEach(button => {
-        button.addEventListener('click', (event) => {
-            // Delete logic for department remains the same (it already unassigns employees from the department by name)
-            // The assignedRoles array within the department object itself is simply removed when the department is deleted.
-            const deptIdToDelete = event.target.dataset.deptId;
-            const deptBeingDeleted = configurableDepartments.find(d => d.id === deptIdToDelete);
-            if (deptBeingDeleted && confirm(`Are you sure you want to delete the department "${deptBeingDeleted.name}"? This will also unassign roles from it and reset the department for any employees in it.`)) {
-                configurableDepartments = configurableDepartments.filter(d => d.id !== deptIdToDelete);
-                employeeData.forEach(emp => {
-                    if (emp.department === deptBeingDeleted.name) {
-                        emp.department = ''; 
-                        console.log(`Employee ${emp.name} department reset as their department "${deptBeingDeleted.name}" was deleted.`);
-                    }
-                });
-                persistEmployeeData();
-                persistDepartments();
-                renderDepartmentSetupForm(container); 
-                renderAddEditEmployeeFormPopulateDepartments(); 
-            }
+        button.addEventListener('click', async (event) => {
+          const deptIdToDelete = event.target.dataset.deptId;
+          const deptBeingDeleted = configurableDepartments.find(d => d.id === deptIdToDelete);
+          if (!deptBeingDeleted) return;
+          if (!confirm(`Delete department "${deptBeingDeleted.name}" and reset employees?`)) return;
+      
+          // update local arrays
+          configurableDepartments = configurableDepartments.filter(d => d.id !== deptIdToDelete);
+          employeeData.forEach(emp => {
+            if (emp.department === deptBeingDeleted.name) emp.department = '';
+          });
+      
+          // bulk-write both collections in one go:
+          await persistCollection('employees', employeeData);
+          await persistCollection('departments', configurableDepartments);
+      
+          // re-render UI
+          renderDepartmentSetupForm(container);
+          renderAddEditEmployeeFormPopulateDepartments();
         });
-    });
-}
+      });
+    };
 
 // loadDepartments remains the same (it already initializes assignedRoles: [])
 // persistDepartments remains the same
@@ -3810,6 +3812,25 @@ function renderLevelDescriptionInputs(containerId, scale, descriptions = []) {
         }
     }
 }
+
+/**
+ * Bulk-upserts an array of { id, ...data } into Firestore.
+ * @param {string} colName  Collection name
+ * @param {Array<{id:string, ...}>} items  Array of objects with .id + fields
+ */
+async function persistCollection(colName, items) {
+    const batch = writeBatch(db);
+    const colRef = collection(db, colName);
+  
+    items.forEach(item => {
+      if (!item.id) return;       // skip objects without an id
+      const docRef = doc(colRef, item.id);
+      batch.set(docRef, item);
+    });
+  
+    await batch.commit();
+    console.log(`persistCollection: synced ${items.length} documents to '${colName}'.`);
+  }
 
 
 // Function to render the list of assessed competencies for an employee
