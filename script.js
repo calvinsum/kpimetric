@@ -1093,28 +1093,37 @@ document.addEventListener('DOMContentLoaded', async () => { // Make this async
 
 // --- Employee Data Management ---
 async function addEmployee(empData) {
+    // Debug: verify input and references
+    console.log('[addEmployee] empData:', empData);
     const employeesCol = collection(db, 'employees');
+    console.log('[addEmployee] employeesCol:', employeesCol);
   
     try {
-      // Transaction to enforce unique employeeCode
+      // Atomic transaction to enforce unique employeeCode
       const resultRef = await runTransaction(db, async (tx) => {
-        const q = query(employeesCol, where('employeeCode', '==', empData.employeeCode));
+        const q = query(
+          employeesCol,
+          where('employeeCode', '==', empData.employeeCode)
+        );
+        console.log('[addEmployee] query:', q);
+  
         const snap = await tx.get(q);
         if (!snap.empty) {
           throw new Error(`Employee code ${empData.employeeCode} already exists`);
         }
   
-        // Create a new document with auto-generated ID
+        // Create document with auto-generated ID
         const newDocRef = doc(employeesCol);
+        console.log('[addEmployee] newDocRef:', newDocRef);
         tx.set(newDocRef, empData);
         return newDocRef;
       });
   
-      console.log('Employee added at:', resultRef.path);
+      console.log('[addEmployee] Employee added at:', resultRef.path);
       return { ...empData, id: resultRef.id };
   
     } catch (err) {
-      console.error('Error in addEmployee transaction:', err);
+      console.error('[addEmployee] Error in addEmployee transaction:', err);
       throw err;
     }
   }
