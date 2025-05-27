@@ -101,19 +101,7 @@
             <section id="employee-section" style="display: none;">
                 <h2>Employee Management</h2>
                 <p>Manage employee details, assign roles, and view their information.</p>
-              
-                <form id="employee-form">
-                  <div>
-                    <label for="employee-name">Name</label>
-                    <input type="text" id="employee-name" required />
-                  </div>
-                  <div>
-                    <label for="employee-role">Role</label>
-                    <input type="text" id="employee-role" required />
-                  </div>
-                  <button type="submit">Create Employee</button>
-                </form>
-              </section>
+            </section>
 
             <section id="report-section" style="display: none;">
                 <h2>Performance Reports</h2>
@@ -165,40 +153,6 @@
         appContainer.style.display = 'flex';
       } catch (err) {
         console.error('Login failed:', err);
-      }
-    });
-  </script>
-  <script type="module">
-    import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
-  
-    const form       = document.getElementById('employee-form');
-    const nameInput  = document.getElementById('employee-name');
-    const roleInput  = document.getElementById('employee-role');
-  
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-  
-      const name = nameInput.value.trim();
-      const role = roleInput.value.trim();
-      if (!name || !role) {
-        return alert('Please fill in both name and role.');
-      }
-  
-      try {
-        const db = getFirestore();
-        const employeesCol = collection(db, 'employees');
-        const docRef = await addDoc(employeesCol, {
-          name,
-          role,
-          createdAt: serverTimestamp(),
-        });
-  
-        console.log('Employee created with ID:', docRef.id);
-        alert('Employee successfully created!');
-        form.reset();
-      } catch (err) {
-        console.error('Error saving employee:', err);
-        alert('Unable to save employee. Please try again.');
       }
     });
   </script>
