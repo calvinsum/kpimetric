@@ -1134,6 +1134,8 @@ async function saveEmployee(employeeObject) {
 
 // Add a SINGLE new employee to Firestore AND the local employeeData array
 async function addEmployee(newEmployeeObject) {
+    console.log('[addEmployee] Called. db object:', db);
+    console.log('[addEmployee] runTransaction function:', runTransaction);
     const employeeCode = newEmployeeObject.employeeCode;
 
     if (!employeeCode) { // Basic validation
