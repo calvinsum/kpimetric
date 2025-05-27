@@ -1111,7 +1111,17 @@ async function addEmployee(empData) {
       console.error('Error in addEmployee transaction:', error);
     }
   }
-  
+
+  async function loadEmployeeData() {
+    try {
+      const snapshot = await getDocs(collection(db, 'employees'));
+      employeeData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('Employees loaded:', employeeData);
+    } catch (err) {
+      console.error('Error loading employees:', err);
+    }
+  }
+
 
 // Save/Update a SINGLE employee in Firestore
 async function saveEmployee(employeeObject) {
@@ -1342,15 +1352,6 @@ function persistPerformanceRecords() {
     console.log('Performance records persisted to local storage.');
 }
 
-// --- Render Employee Section (Initial) ---
-// ... existing code ...
-document.addEventListener('DOMContentLoaded', () => {
-    loadKpiData(); 
-    loadEmployeeData(); 
-    loadPerformanceRecords(); // Load performance records on DOM ready
-    showSection(calculatorSection); 
-    populateRoleSelector(currentKpiData); 
-});
 
 // ... existing code ...
 
