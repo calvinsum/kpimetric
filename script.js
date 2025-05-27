@@ -1294,17 +1294,18 @@ function renderEmployeeList(container) {
     // EDIT BUTTON LOGIC
     document.querySelectorAll('.edit-employee-button').forEach(button => {
         button.addEventListener('click', (event) => {
-            const employeeIdToEdit = event.target.dataset.employeeId;
-            // Find the original index using the ID, which is safer
-            const employeeOriginalIndex = employeeData.findIndex(emp => emp.id === employeeIdToEdit);
-            if (employeeOriginalIndex === -1) {
-                alert("Error: Could not find employee to edit.");
-                return;
-            }
-            const formContainer = document.getElementById('add-edit-employee-form-container');
-            renderAddEditEmployeeForm(formContainer, employeeOriginalIndex, container); 
+          // Grab the Firestore document ID directly
+          const employeeIdToEdit = event.target.dataset.employeeId;
+          if (!employeeIdToEdit) {
+            alert("Error: Missing employee ID for editing.");
+            return;
+          }
+      
+          // Pass the document ID (string) into your render function
+          const formContainer = document.getElementById('add-edit-employee-form-container');
+          renderAddEditEmployeeForm(formContainer, employeeIdToEdit, /* optional container */ document.getElementById('employee-list-container'));
         });
-    });
+      });
 
     // DELETE BUTTON LOGIC (MODIFIED)
     document.querySelectorAll('.delete-employee-button').forEach(button => {
