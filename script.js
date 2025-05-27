@@ -1093,22 +1093,29 @@ document.addEventListener('DOMContentLoaded', async () => { // Make this async
 
 // --- Employee Data Management ---
 async function addEmployee(empData) {
-    // Create a document reference using the modular API
-    const empRef = doc(db, 'employees', empData.uid);
+    const employeesCol = collection(db, 'employees');
+  
     try {
-      // Run a transaction to set or update the document atomically
-      const resultRef = await runTransaction(db, async (transaction) => {
-        const docSnap = await transaction.get(empRef);
-        if (!docSnap.exists()) {
-          transaction.set(empRef, empData);
-        } else {
-          transaction.update(empRef, empData);
+      // Transaction to enforce unique employeeCode
+      const resultRef = await runTransaction(db, async (tx) => {
+        const q = query(employeesCol, where('employeeCode', '==', empData.employeeCode));
+        const snap = await tx.get(q);
+        if (!snap.empty) {
+          throw new Error(`Employee code ${empData.employeeCode} already exists`);
         }
-        return empRef;
+  
+        // Create a new document with auto-generated ID
+        const newDocRef = doc(employeesCol);
+        tx.set(newDocRef, empData);
+        return newDocRef;
       });
-      console.log('Employee added/updated at:', resultRef.path);
-    } catch (error) {
-      console.error('Error in addEmployee transaction:', error);
+  
+      console.log('Employee added at:', resultRef.path);
+      return { ...empData, id: resultRef.id };
+  
+    } catch (err) {
+      console.error('Error in addEmployee transaction:', err);
+      throw err;
     }
   }
 
