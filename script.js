@@ -1093,39 +1093,31 @@ document.addEventListener('DOMContentLoaded', async () => { // Make this async
 
 // --- Employee Data Management ---
 async function addEmployee(empData) {
-    // Debug: verify input and references
-    console.log('[addEmployee] empData:', empData);
-    const employeesCol = collection(db, 'employees');
-    console.log('[addEmployee] employeesCol:', employeesCol);
+    console.log("[addEmployee] empData:", empData);
   
-    try {
-      // Atomic transaction to enforce unique employeeCode
-      const resultRef = await runTransaction(db, async (tx) => {
-        const q = query(
-          employeesCol,
-          where('employeeCode', '==', empData.employeeCode)
-        );
-        console.log('[addEmployee] query:', q);
+    // 1. Check uniqueness outside of transaction
+    const employeesCol = collection(db, "employees");
+    const uniquenessQuery = query(
+      employeesCol,
+      where("employeeCode", "==", empData.employeeCode)
+    );
+    console.log("[addEmployee] checking uniqueness with query:", uniquenessQuery);
   
-        const snap = await tx.get(q);
-        if (!snap.empty) {
-          throw new Error(`Employee code ${empData.employeeCode} already exists`);
-        }
-  
-        // Create document with auto-generated ID
-        const newDocRef = doc(employeesCol);
-        console.log('[addEmployee] newDocRef:', newDocRef);
-        tx.set(newDocRef, empData);
-        return newDocRef;
-      });
-  
-      console.log('[addEmployee] Employee added at:', resultRef.path);
-      return { ...empData, id: resultRef.id };
-  
-    } catch (err) {
-      console.error('[addEmployee] Error in addEmployee transaction:', err);
-      throw err;
+    const existingSnap = await getDocs(uniquenessQuery);
+    if (!existingSnap.empty) {
+      throw new Error(`Employee code ${empData.employeeCode} already exists`);
     }
+  
+    // 2. Now run a transaction just to write the new doc
+    const newDocRef = doc(employeesCol); // auto-ID
+    console.log("[addEmployee] newDocRef:", newDocRef);
+  
+    await runTransaction(db, async (tx) => {
+      tx.set(newDocRef, empData);
+    });
+  
+    console.log("[addEmployee] Employee added at:", newDocRef.path);
+    return { ...empData, id: newDocRef.id };
   }
 
   async function loadEmployeeData() {
