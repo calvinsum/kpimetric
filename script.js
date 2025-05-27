@@ -10,6 +10,7 @@ import {
     deleteDoc,
     query,    
     where,     
+    ohSnapShot,
     runTransaction
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
@@ -21,6 +22,7 @@ document.getElementById('login-button').addEventListener('click', handleLogin);
 document.getElementById('logout-button').addEventListener('click', handleLogout);
 
 // Listen for auth changes
+
 onAuthStateChanged(auth, (user) => {
     const loginScreen = document.getElementById('login-screen');
     const appContainer = document.getElementById('app-container');
@@ -28,12 +30,36 @@ onAuthStateChanged(auth, (user) => {
     if (user && user.email.endsWith('@storehub.com')) {
       loginScreen.style.display = 'none';
       appContainer.style.display = 'block';
+  
+      // ───── Firestore real-time listeners ─────
+      // 1) All submitted KPI records:
+      onSnapshot(collection(db, 'performanceRecords'), snap => {
+        performanceRecords = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      });
+  
+      // 2) All reports:
+      onSnapshot(collection(db, 'reports'), snap => {
+        reports = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      });
+  
+      // 3) All settings (departments):
+      onSnapshot(collection(db, 'departments'), snap => {
+        configurableDepartments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // If you’re in Settings right now, re-draw:
+        if (settingsSection.style.display === 'block') {
+          renderDepartmentSetupForm(document.getElementById('settings-section'));
+          renderAddEditEmployeeFormPopulateDepartments();
+        }
+      });
+      // ─────────────────────────────────────────
+  
     } else {
       loginScreen.style.display = 'flex';
       appContainer.style.display = 'none';
     }
   });
 
+  
 // DOM Elements
 const navCalculator = document.getElementById('nav-calculator');
 const navEmployee = document.getElementById('nav-employee'); 
