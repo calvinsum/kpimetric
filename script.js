@@ -1092,29 +1092,26 @@ document.addEventListener('DOMContentLoaded', async () => { // Make this async
 });
 
 // --- Employee Data Management ---
-async function loadEmployeeData() {
-    employeeData = []; // Clear local array before loading
+async function addEmployee(empData) {
+    // Create a document reference using the modular API
+    const empRef = doc(db, 'employees', empData.uid);
     try {
-        // Check if user is authenticated first
-        if (!auth.currentUser) {
-            console.log('User not authenticated, skipping employee data load');
-            return;
+      // Run a transaction to set or update the document atomically
+      const resultRef = await runTransaction(db, async (transaction) => {
+        const docSnap = await transaction.get(empRef);
+        if (!docSnap.exists()) {
+          transaction.set(empRef, empData);
+        } else {
+          transaction.update(empRef, empData);
         }
-
-        console.log('Loading employee data for user:', auth.currentUser.email);
-        const querySnapshot = await getDocs(collection(db, "employees"));
-        querySnapshot.forEach((docSnap) => {
-            employeeData.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        console.log('Employee data loaded from Firestore:', employeeData);
+        return empRef;
+      });
+      console.log('Employee added/updated at:', resultRef.path);
     } catch (error) {
-        console.error('Error loading employee data from Firestore:', error);
-        if (error.code === 'permission-denied') {
-            console.log('Permission denied - user may not be authenticated properly');
-        }
-        employeeData = []; // Reset to empty on error
+      console.error('Error in addEmployee transaction:', error);
     }
-}
+  }
+  
 
 // Save/Update a SINGLE employee in Firestore
 async function saveEmployee(employeeObject) {
