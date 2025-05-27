@@ -29,7 +29,7 @@ onAuthStateChanged(auth, (user) => {
       loginScreen.style.display = 'none';
       appContainer.style.display = 'block';
     } else {
-      loginScreen.style.display = 'block';
+      loginScreen.style.display = 'flex';
       appContainer.style.display = 'none';
     }
   });
