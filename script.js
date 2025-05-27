@@ -12,7 +12,7 @@ import {
     where,     
     runTransaction
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 
 const kpiDataAllRoles = [{"roleName":"Onboarding Team Lead","kpis":[{"name":"Go Live Rate","remarks":"No. of Accounts Go Live ≥ 10 txn / No. of Accounts in New Stage to Go Live Stage.","weightage":25,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":69}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Installation SLA","remarks":"Installation conducted on merchant requested date.","weightage":20,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":79}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":84}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":85,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Training Utilization Rate","remarks":"Total Monthly Slots for Training \\n= 1.75 trainings per day x 20 days x 5 OC \\n= 175 slots\\n\\nTotal Monthly Training (excluding Quick Guides) / Total Monthly Slots for Training \\n= Utilisation rate (%)","weightage":20,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lt","value":70}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Onboarding CSAT","remarks":"CSAT survey related to onboarding.","weightage":25,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lt","value":69}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"First 30 Days Go Live Care Ticket ≤ 5","remarks":"Merchant ticket escalation related to onboarding after go live ≤ 5","weightage":10,"maxRating":5,"inputType":"percentage_compliance","lowerIsBetter":false,"comment":"Input is compliance % for '≤ 5 tickets'. Higher % is better.","performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":74}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":75,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":85}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":86,"upper":90}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gte","value":91}}]}]},/* Rest of kpiDataAllRoles JSON */];
  
@@ -1095,6 +1095,13 @@ document.addEventListener('DOMContentLoaded', async () => { // Make this async
 async function loadEmployeeData() {
     employeeData = []; // Clear local array before loading
     try {
+        // Check if user is authenticated first
+        if (!auth.currentUser) {
+            console.log('User not authenticated, skipping employee data load');
+            return;
+        }
+
+        console.log('Loading employee data for user:', auth.currentUser.email);
         const querySnapshot = await getDocs(collection(db, "employees"));
         querySnapshot.forEach((docSnap) => {
             employeeData.push({ id: docSnap.id, ...docSnap.data() });
@@ -1102,6 +1109,9 @@ async function loadEmployeeData() {
         console.log('Employee data loaded from Firestore:', employeeData);
     } catch (error) {
         console.error('Error loading employee data from Firestore:', error);
+        if (error.code === 'permission-denied') {
+            console.log('Permission denied - user may not be authenticated properly');
+        }
         employeeData = []; // Reset to empty on error
     }
 }
