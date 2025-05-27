@@ -1,4 +1,4 @@
-import { auth, provider, signInWithPopup } from './firebase.js';
+import { auth, provider, signInWithPopup, db } from './firebase.js';
 import { signOut } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 import { collection, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
