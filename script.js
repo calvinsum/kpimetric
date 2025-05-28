@@ -2275,39 +2275,27 @@ function renderAddEditKpiForm(roleIndex, kpiIndex = null) {
 // ... (attachRoleSetupEventListeners and other remaining functions)
 
 // --- Input Type Management ---
-function loadInputTypes() {
-    const savedInputTypes = localStorage.getItem('kpiAppInputTypes');
-    const defaultInputTypes = [
-        { value: 'percentage', label: 'Percentage', unitSymbol: '%' },
-        { value: 'number', label: 'Number', unitSymbol: '' },
-        { value: 'percentage_compliance', label: 'Percentage (Compliance)', unitSymbol: '%' },
-        { value: 'duration_days', label: 'Duration (Days)', unitSymbol: 'days' },
-        { value: 'duration_hours', label: 'Duration (Hours)', unitSymbol: 'hrs' },
-        { value: 'duration_minutes', label: 'Duration (Minutes)', unitSymbol: 'mins' }
-    ];
-
-    if (savedInputTypes) {
+    // Around line 2278
+    async function loadInputTypes() {
+        configurableInputTypes = []; // Clear local array before loading
         try {
-            const parsed = JSON.parse(savedInputTypes);
-            if (Array.isArray(parsed) && parsed.every(item => typeof item.value === 'string' && typeof item.label === 'string')) {
-                // Ensure unitSymbol exists, default to empty string if not (for backward compatibility)
-                configurableInputTypes = parsed.map(item => ({ ...item, unitSymbol: item.unitSymbol || '' }));
-            } else {
-                console.warn('Saved input types are not in the expected format. Using defaults.');
-                configurableInputTypes = defaultInputTypes;
-                localStorage.setItem('kpiAppInputTypes', JSON.stringify(configurableInputTypes));
-            }
+            const querySnapshot = await getDocs(collection(db, "inputTypes"));
+            querySnapshot.forEach((docSnap) => {
+                configurableInputTypes.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            console.log('Configurable input types loaded from Firestore:', configurableInputTypes);
         } catch (error) {
-            console.error('Error parsing saved input types:', error, 'Using defaults.');
-            configurableInputTypes = defaultInputTypes;
-            localStorage.setItem('kpiAppInputTypes', JSON.stringify(configurableInputTypes));
+            console.error('Error loading configurable input types from Firestore:', error);
+            configurableInputTypes = []; // Reset to empty on error or provide default types
+            // Optionally, define default types if Firestore is empty/errors out:
+            // configurableInputTypes = [
+            //     { id: "default_percentage", value: "percentage", label: "Percentage (%)", unitSymbol: "%" },
+            //     { id: "default_number", value: "number", label: "Number", unitSymbol: "" },
+            //     // Add other essential defaults if necessary
+            // ];
+            // console.warn('Initialized with default input types due to loading error or empty collection.');
         }
-    } else {
-        configurableInputTypes = defaultInputTypes;
-        localStorage.setItem('kpiAppInputTypes', JSON.stringify(configurableInputTypes));
     }
-    console.log('Configurable input types loaded:', configurableInputTypes);
-}
 
 function persistInputTypes() {
     localStorage.setItem('kpiAppInputTypes', JSON.stringify(configurableInputTypes));
@@ -2315,7 +2303,7 @@ function persistInputTypes() {
     // alert('Input types saved!'); // Optional alert
 }
 
-function renderInputTypeSetupForm(container, editModeData = null) {
+async function renderInputTypeSetupForm(container, editModeData = null) {
     console.log("[renderInputTypeSetupForm] Called. Edit Mode Data:", editModeData);
     if (!container) { /* ... error handling ... */ return; }
 
@@ -2370,37 +2358,55 @@ function renderInputTypeSetupForm(container, editModeData = null) {
     const unitSymbolInput = document.getElementById('input-type-unit-symbol'); // Get unit symbol input
 
     if (saveButton) {
-        saveButton.addEventListener('click', () => {
+        saveButton.addEventListener('click', async () => { // MODIFIED: Made async
             const newValue = valueInput.value.trim();
             const newLabel = labelInput.value.trim();
-            const newUnitSymbol = unitSymbolInput.value.trim(); // Get unit symbol value
+            const newUnitSymbol = unitSymbolInput.value.trim(); 
 
             if (!newValue || !newLabel) {
                 alert('Both Value and Label are required.');
                 return;
             }
-            const inputTypeData = { value: newValue, label: newLabel, unitSymbol: newUnitSymbol };
+            // Create the base object, ID will be added
+            let inputTypeData = { value: newValue, label: newLabel, unitSymbol: newUnitSymbol };
 
             if (isEditing) {
                 const originalVal = document.getElementById('original-input-type-value-for-edit').value;
                 const itemIndex = configurableInputTypes.findIndex(it => it.value === originalVal);
-                if (itemIndex === -1) { /* ... error handling ... */ renderInputTypeSetupForm(container); return; }
+                if (itemIndex === -1) { 
+                    console.error("Error updating input type: Original item not found for editing.");
+                    alert("Error: Could not find the original input type to update.");
+                    renderInputTypeSetupForm(container); 
+                    return; 
+                }
                 if (newValue.toLowerCase() !== originalVal.toLowerCase() && configurableInputTypes.some(it => it.value.toLowerCase() === newValue.toLowerCase())) {
                     alert(`An input type with the value "${newValue}" already exists. Value must be unique.`);
                     return;
                 }
+                
+                // MODIFIED: Preserve existing ID
+                inputTypeData.id = configurableInputTypes[itemIndex].id; 
+                
                 configurableInputTypes[itemIndex] = inputTypeData;
+                await persistCollection('inputTypes', configurableInputTypes); // MODIFIED: Persist to Firestore
                 alert('Input type updated successfully!');
+
             } else { // Adding new
                 if (configurableInputTypes.some(it => it.value.toLowerCase() === newValue.toLowerCase())) {
                     alert(`An input type with the value "${newValue}" already exists. Value must be unique.`);
                     return;
                 }
+                
+                // MODIFIED: Generate Firestore ID for new item
+                const newId = doc(collection(db, "inputTypes")).id;
+                inputTypeData.id = newId; 
+
                 configurableInputTypes.push(inputTypeData);
+                await persistCollection('inputTypes', configurableInputTypes); // MODIFIED: Persist to Firestore
                 alert('Input type added successfully!');
             }
-            persistInputTypes();
-            renderInputTypeSetupForm(container);
+            // persistInputTypes(); // REMOVED: Old localStorage call
+            renderInputTypeSetupForm(container); // Re-render the UI
         });
     }
     // ... (Cancel Edit, Edit button, Delete button listeners remain the same)
@@ -2422,7 +2428,7 @@ function renderInputTypeSetupForm(container, editModeData = null) {
         });
     });
     document.querySelectorAll('.delete-input-type-button').forEach(button => {
-        button.addEventListener('click', (event) => {
+        button.addEventListener('click', async (event) => {
             const valueToDelete = event.target.dataset.inputTypeValue;
             if (isEditing && valueToDelete === document.getElementById('original-input-type-value-for-edit').value) {
                 alert("Cannot delete the input type you are currently editing. Cancel edit first.");
@@ -2430,7 +2436,7 @@ function renderInputTypeSetupForm(container, editModeData = null) {
             }
             if (confirm(`Are you sure you want to delete the input type "${valueToDelete}"? This cannot be undone and might affect existing KPIs if they use this type.`)) {
                 configurableInputTypes = configurableInputTypes.filter(it => it.value !== valueToDelete);
-                persistInputTypes();
+                await persistCollection('inputTypes', configurableInputTypes);
                 renderInputTypeSetupForm(container); // Re-render the form
             }
         });
