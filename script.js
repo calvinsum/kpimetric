@@ -22,60 +22,77 @@ import { writeBatch } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-
 
 // 1) KPI settings (was in localStorage)
 function subscribeKpiSettings() {
-    const ref = doc(db, 'appConfig', 'kpiData');
-    onSnapshot(ref, snap => {
-      const data = snap.data();
-      if (!data?.kpis) return;
-      currentKpiData = data.kpis;
-      // if the calculator is already shown, repopulate
-      if (document.getElementById('role-select')) {
-        populateRoleSelector(currentKpiData);
-      }
-    }, err => console.error('KPI settings subscription failed:', err));
+    const colRef = collection(db, "kpiSettings");
+    onSnapshot(colRef, snapshot => {
+      currentKpiData = snapshot.docs.map(doc => doc.data());
+      console.log("KPI Settings updated:", currentKpiData);
+      // If on calculator page, refresh selector
+      if (calculatorSection.style.display === 'block') populateRoleSelector(currentKpiData);
+    }, err => console.error("subscribeKpiSettings error:", err));
   }
   
-  // 2) Performance records
+  /**
+   * Subscribe to 'employees' collection and update employeeData in real time.
+   */
+  function subscribeEmployeeData() {
+    const colRef = collection(db, "employees");
+    onSnapshot(colRef, snapshot => {
+      employeeData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log("Employees updated:", employeeData);
+      // If on employee page, re-render
+      if (employeeSection.style.display === 'block') renderEmployeeSection();
+    }, err => console.error("subscribeEmployeeData error:", err));
+  }
+  
+  /**
+   * Subscribe to KPI submissions stored in 'performanceRecords'.
+   */
   function subscribePerformanceRecords() {
-    const colRef = collection(db, 'performanceRecords');
-    onSnapshot(colRef, snap => {
-      performanceRecords = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // if report page is visible, re-render
-      if (reportSection.style.display === 'block') {
-        renderReportSection();
-      }
-    }, err => console.error('PerformanceRecords subscription failed:', err));
+    const colRef = collection(db, "performanceRecords");
+    onSnapshot(colRef, snapshot => {
+      performanceRecords = snapshot.docs.map(doc => doc.data());
+      console.log("PerformanceRecords updated:", performanceRecords);
+      // If on report page, re-render
+      if (reportSection.style.display === 'block') renderReportSection();
+    }, err => console.error("subscribePerformanceRecords error:", err));
   }
   
-  // 3) Departments
-  function subscribeDepartments() {
-    const colRef = collection(db, 'departments');
-    onSnapshot(colRef, snap => {
-      configurableDepartments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      // if anywhere shows a dept dropdown, refresh it
-      renderDepartmentSetupForm(document.getElementById('specific-settings-container'));
-    }, err => console.error('Departments subscription failed:', err));
-  }
-  
-  // 4) Input types
+  /**
+   * Subscribe to input types in 'inputTypes'.
+   */
   function subscribeInputTypes() {
-    const colRef = collection(db, 'inputTypes');
-    onSnapshot(colRef, snap => {
-      configurableInputTypes = snap.docs.map(d => d.data());
-      renderInputTypeSetupForm(document.getElementById('specific-settings-container'));
-    }, err => console.error('InputTypes subscription failed:', err));
+    const colRef = collection(db, "inputTypes");
+    onSnapshot(colRef, snapshot => {
+      configurableInputTypes = snapshot.docs.map(doc => doc.data());
+      console.log("InputTypes updated:", configurableInputTypes);
+      if (settingsSection.style.display === 'block') renderSettings();
+    }, err => console.error("subscribeInputTypes error:", err));
   }
   
-  // 5) Competency categories & types
-  function subscribeCompetencyCategories() {
-    const colRef = collection(db, 'competencyCategories');
-    onSnapshot(colRef, snap => {
-      configurableCompetencyCategories = snap.docs.map(d => d.data());
-      // if Competency page is visible, re-render
-      if (competenciesSection.style.display === 'block') {
-        renderCompetenciesSection();
-      }
-    }, err => console.error('CompetencyCategories subscription failed:', err));
+  /**
+   * Subscribe to departments in 'departments'.
+   */
+  function subscribeDepartments() {
+    const colRef = collection(db, "departments");
+    onSnapshot(colRef, snapshot => {
+      configurableDepartments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log("Departments updated:", configurableDepartments);
+      if (settingsSection.style.display === 'block') renderSettings();
+    }, err => console.error("subscribeDepartments error:", err));
   }
+  
+  /**
+   * Subscribe to competency categories in 'competencies'.
+   */
+  function subscribeCompetencyCategories() {
+    const colRef = collection(db, "competencies");
+    onSnapshot(colRef, snapshot => {
+      configurableCompetencyCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log("Competencies updated:", configurableCompetencyCategories);
+      if (settingsSection.style.display === 'block') renderSettings();
+    }, err => console.error("subscribeCompetencyCategories error:", err));
+  }
+  
   
 
 
