@@ -575,6 +575,16 @@ function getFinalGrade(totalScore) {
 // REMOVE: let currentKpiData = JSON.parse(JSON.stringify(kpiDataAllRoles)); from here
 
 function loadKpiData() {
+    console.log('[loadKpiData] Called. Checking kpiDataAllRoles:', typeof kpiDataAllRoles);
+    if (typeof kpiDataAllRoles === 'undefined') {
+        console.error('[loadKpiData] CRITICAL: kpiDataAllRoles is undefined at the start of loadKpiData!');
+        // Attempt to use a minimal fallback if kpiDataAllRoles is somehow not available
+        // This is a safety net, the root cause of kpiDataAllRoles being undefined needs to be found.
+        currentKpiData = []; 
+        localStorage.setItem('kpiAppData', JSON.stringify(currentKpiData)); // Save empty to avoid repeated errors
+        return; // Exit early if the primary data source is missing
+    }
+
     const savedData = localStorage.getItem('kpiAppData');
     if (savedData) {
         try {
@@ -1078,7 +1088,7 @@ const initialKpiData = JSON.parse(JSON.stringify(kpiDataAllRoles));
 
 document.addEventListener('DOMContentLoaded', async () => { // Make this async
     // ...
-    await loadKpiData(); // If this is async too
+    loadKpiData(); // REMOVED await, loadKpiData is not async
     await loadEmployeeData(); // <<<< MAKE SURE THIS IS CALLED AND AWAITED
     await loadPerformanceRecords(); // If async
     await loadInputTypes(); // If async
@@ -2977,38 +2987,43 @@ async function renderAddEditEmployeeForm(formContainer, employeeIdToEdit = null,
 // The rest of script.js should follow or precede this, ensuring function scope and call order are correct.
 
 // --- Department Management Functions ---
-function loadDepartments() {
-    const savedDepartments = localStorage.getItem('kpiAppDepartments');
-    const defaultDepartments = [
-        // Initialize with empty assignedRoles array
-        { id: 'dept_g_001', name: 'General', assignedRoles: [] },
-        { id: 'dept_s_002', name: 'Sales', assignedRoles: [] },
-        { id: 'dept_m_003', name: 'Marketing', assignedRoles: [] },
-        { id: 'dept_t_004', name: 'Technology', assignedRoles: [] },
-        { id: 'dept_h_005', name: 'Human Resources', assignedRoles: [] }
-    ];
-    if (savedDepartments) {
-        try {
-            const parsed = JSON.parse(savedDepartments);
-            if (Array.isArray(parsed) && parsed.every(item => typeof item.id === 'string' && typeof item.name === 'string')) {
-                // Ensure assignedRoles exists and is an array for each loaded department
-                configurableDepartments = parsed.map(dept => ({
-                    ...dept,
-                    assignedRoles: Array.isArray(dept.assignedRoles) ? dept.assignedRoles : []
-                }));
-            } else {
-                console.warn('Saved departments data is not in the expected format. Using defaults.');
-                configurableDepartments = defaultDepartments;
-                localStorage.setItem('kpiAppDepartments', JSON.stringify(configurableDepartments));
-            }
-        } catch (error) {
-            console.error('Error parsing saved departments data:', error, 'Using defaults.');
+async function loadDepartments() { // Made async
+    configurableDepartments = []; // Clear local array
+    try {
+        const querySnapshot = await getDocs(collection(db, "departments"));
+        if (querySnapshot.empty) {
+            console.warn("No departments found in Firestore. Initializing with defaults and saving.");
+            const defaultDepartments = [
+                { id: 'dept_g_001', name: 'General', assignedRoles: [] },
+                { id: 'dept_s_002', name: 'Sales', assignedRoles: [] },
+                { id: 'dept_m_003', name: 'Marketing', assignedRoles: [] },
+                { id: 'dept_t_004', name: 'Technology', assignedRoles: [] },
+                { id: 'dept_h_005', name: 'Human Resources', assignedRoles: [] }
+            ];
+            // Save these defaults to Firestore
+            const batch = writeBatch(db);
+            defaultDepartments.forEach(dept => {
+                const docRef = doc(db, "departments", dept.id); // Use predefined IDs for defaults
+                batch.set(docRef, dept);
+            });
+            await batch.commit();
             configurableDepartments = defaultDepartments;
-            localStorage.setItem('kpiAppDepartments', JSON.stringify(configurableDepartments));
+            console.log('Initialized and saved default departments to Firestore.');
+        } else {
+            querySnapshot.forEach((docSnap) => {
+                // Ensure assignedRoles exists and is an array for each loaded department
+                const data = docSnap.data();
+                configurableDepartments.push({ 
+                    id: docSnap.id, 
+                    ...data,
+                    assignedRoles: Array.isArray(data.assignedRoles) ? data.assignedRoles : []
+                });
+            });
         }
-    } else {
-        configurableDepartments = defaultDepartments;
-        localStorage.setItem('kpiAppDepartments', JSON.stringify(configurableDepartments));
+    } catch (error) {
+        console.error('Error loading departments from Firestore:', error);
+        // Fallback or error display - providing a minimal fallback
+        configurableDepartments = [ { id: 'fallback_dept_error', name: 'Error Loading Departments', assignedRoles: [] } ];
     }
     console.log('Configurable departments loaded:', configurableDepartments);
 }
@@ -3196,21 +3211,25 @@ function renderDepartmentSetupForm(container, editModeData = null) {
 function renderAddEditEmployeeFormPopulateDepartments() {
     const formContainer = document.getElementById('add-edit-employee-form-container');
     // Check if the employee form is actually visible and contains a department select
-    if (formContainer && formContainer.style.display !== 'none' && formContainer.querySelector('select[id*="-department"]')) {
+    if (formContainer && formContainer.style.display !== 'none') { // Simplified check
         const deptSelect = formContainer.querySelector('select[id*="-department"]');
-        const currentSelectedDeptValue = deptSelect.value;
-        
-        let departmentOptionsHTML = configurableDepartments.map(dept => 
-            `<option value="${dept.name}" ${currentSelectedDeptValue === dept.name ? 'selected' : ''}>${dept.name}</option>`
-        ).join('');
+        if (deptSelect) { // Ensure deptSelect is found
+            const currentSelectedDeptValue = deptSelect.value;
+            
+            let departmentOptionsHTML = configurableDepartments.map(dept => 
+                `<option value="${dept.name}" ${currentSelectedDeptValue === dept.name ? 'selected' : ''}>${dept.name}</option>`
+            ).join('');
 
-        if (configurableDepartments.length === 0) {
-            departmentOptionsHTML = '<option value="">-- No Departments Configured --</option>';
-        } else {
-            departmentOptionsHTML = '<option value="">-- Select a Department --</option>' + departmentOptionsHTML;
+            if (configurableDepartments.length === 0) {
+                departmentOptionsHTML = '<option value="">-- No Departments Configured --</option>';
+                deptSelect.disabled = true; // Disable if no departments
+            } else {
+                departmentOptionsHTML = '<option value="">-- Select a Department --</option>' + departmentOptionsHTML;
+                deptSelect.disabled = false; // Enable if there are departments
+            }
+            deptSelect.innerHTML = departmentOptionsHTML;
+            console.log("[renderAddEditEmployeeFormPopulateDepartments] Employee form department dropdown refreshed.");
         }
-        deptSelect.innerHTML = departmentOptionsHTML;
-        console.log("[renderAddEditEmployeeFormPopulateDepartments] Employee form department dropdown refreshed.");
     }
 }
 
@@ -3218,42 +3237,46 @@ function renderAddEditEmployeeFormPopulateDepartments() {
 let configurableCompetencyCategories = [];
 
 // --- Competency Category Management Functions ---
-function loadCompetencyCategories() {
-    const savedCategories = localStorage.getItem('kpiAppCompetencyCategories');
-    const defaultCategories = [
-        { id: 'cat_tech_001', name: 'Technical Skills', types: [] },
-        { id: 'cat_soft_002', name: 'Soft Skills', types: [] },
-        { id: 'cat_lead_003', name: 'Leadership Qualities', types: [] }
-    ];
-    if (savedCategories) {
-        try {
-            const parsed = JSON.parse(savedCategories);
-            if (Array.isArray(parsed) && parsed.every(item => typeof item.id === 'string' && typeof item.name === 'string')) {
-                configurableCompetencyCategories = parsed.map(cat => ({
-                    ...cat,
-                    types: Array.isArray(cat.types) ? cat.types.map(type => ({
+async function loadCompetencyCategories() { // Made async
+    configurableCompetencyCategories = []; // Clear local array
+    try {
+        const querySnapshot = await getDocs(collection(db, "competencyCategories"));
+        if (querySnapshot.empty) {
+            console.warn("No competency categories found in Firestore. Initializing with defaults and saving.");
+            const defaultCategories = [
+                { id: 'cat_tech_001', name: 'Technical Skills', types: [] },
+                { id: 'cat_soft_002', name: 'Soft Skills', types: [] },
+                { id: 'cat_lead_003', name: 'Leadership Qualities', types: [] }
+            ].map(cat => ({...cat, types: cat.types.map(t => ({...t, levelScale: 7, levelDescriptions:[], taggedDepartments:[], taggedRoleNames:[] }) ) }));
+
+            const batch = writeBatch(db);
+            defaultCategories.forEach(cat => {
+                const docRef = doc(db, "competencyCategories", cat.id);
+                batch.set(docRef, cat);
+            });
+            await batch.commit();
+            configurableCompetencyCategories = defaultCategories;
+            console.log('Initialized and saved default competency categories to Firestore.');
+        } else {
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                configurableCompetencyCategories.push({
+                    id: docSnap.id,
+                    ...data,
+                    types: Array.isArray(data.types) ? data.types.map(type => ({
                         ...type,
-                        levelScale: type.levelScale || 7, // Default level scale if missing
+                        levelScale: type.levelScale || 7,
                         levelDescriptions: Array.isArray(type.levelDescriptions) ? type.levelDescriptions : [],
                         taggedDepartments: Array.isArray(type.taggedDepartments) ? type.taggedDepartments : [],
                         taggedRoleNames: Array.isArray(type.taggedRoleNames) ? type.taggedRoleNames : []
                     })) : []
-                }));
-            } else {
-                // ... (error handling, use defaults) ...
-                console.warn('Saved competency categories data is not in the expected format (categories). Using defaults.');
-                configurableCompetencyCategories = defaultCategories.map(cat => ({...cat, types: cat.types.map(t => ({...t, levelDescriptions:[], taggedDepartments:[], taggedRoleNames:[] }) ) }));
-                localStorage.setItem('kpiAppCompetencyCategories', JSON.stringify(configurableCompetencyCategories));
-            }
-        } catch (error) {
-            // ... (error handling, use defaults) ...
-            console.error('Error parsing saved competency categories data:', error, 'Using defaults.');
-            configurableCompetencyCategories = defaultCategories.map(cat => ({...cat, types: cat.types.map(t => ({...t, levelDescriptions:[], taggedDepartments:[], taggedRoleNames:[] }) ) }));
-            localStorage.setItem('kpiAppCompetencyCategories', JSON.stringify(configurableCompetencyCategories));
+                });
+            });
         }
-    } else {
-        configurableCompetencyCategories = defaultCategories.map(cat => ({...cat, types: cat.types.map(t => ({...t, levelDescriptions:[], taggedDepartments:[], taggedRoleNames:[] }) ) }));
-        localStorage.setItem('kpiAppCompetencyCategories', JSON.stringify(configurableCompetencyCategories));
+    } catch (error) {
+        console.error('Error loading competency categories from Firestore:', error);
+        // Fallback or error display
+        configurableCompetencyCategories = [ { id: 'fallback_cat_error', name: 'Error Loading Categories', types: [] } ];
     }
     console.log('Configurable competency categories loaded:', configurableCompetencyCategories);
 }
@@ -3631,14 +3654,15 @@ function renderCompetencyTypeManagement(container, category, editTypeData = null
         });
     });
     container.querySelectorAll('.delete-competency-type-button').forEach(button => {
-        button.addEventListener('click', (event) => {
+        button.addEventListener('click', async (event) => { // MADE ASYNC
             const typeIdToDelete = event.target.dataset.typeId;
             const typeNameToDelete = category.types.find(t=>t.id === typeIdToDelete)?.name || 'this type';
             if (confirm(`Are you sure you want to delete the competency type "${typeNameToDelete}"?`)) {
                 const catIndex = configurableCompetencyCategories.findIndex(c => c.id === category.id);
                 if (catIndex !== -1) {
                     configurableCompetencyCategories[catIndex].types = configurableCompetencyCategories[catIndex].types.filter(t => t.id !== typeIdToDelete);
-                    persistCompetencyCategories();
+                    // persistCompetencyCategories(); // OLD localStorage Call
+                    await persistCollection('competencyCategories', configurableCompetencyCategories); // NEW Firestore Call
                     renderCompetencyTypeManagement(container, configurableCompetencyCategories[catIndex]);
                     const categoryManagementContainer = document.getElementById('competency-category-management-container');
                     if (categoryManagementContainer) renderCompetencyCategoryManagement(categoryManagementContainer);

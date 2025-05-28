@@ -1,0 +1,87 @@
+*.png
+node_modules
+node_modules
+# OS generated files
+.DS_Store
+Thumbs.db
+.localized
+
+# Dependencies (like node_modules, from your screenshot)
+node_modules/ # You already have this
+vendor/       # If you have PHP/Ruby dependencies
+
+# Environment variables and sensitive files (CRITICAL from your screenshot)
+.env           # You already have this
+.env.*.local
+*.env
+credentials.json # <-- From your previous mention
+secrets.toml     # <-- From your previous mention
+*.secret
+*.key
+*.pem          # Private keys
+*.pfx
+*.crt
+*.cer
+*.pub
+
+# Python specific (from your screenshot: dashboard.py, gsheet-lark-pr/)
+__pycache__/
+*.pyc
+venv/          # Python virtual environments
+.pytest_cache/
+.mypy_cache/
+
+# Streamlit specific (from your screenshot: .streamlit)
+.streamlit/
+
+# Media files/Large files (from your screenshot: KeyMetric.mp4, Screenshots)
+*.mp4
+*.mov
+*.avi
+*.webm
+*.mkv
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.dmg
+*.iso
+Screenshot*.png  # Ignores files starting with "Screenshot"
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+asda*.svg # Be careful with images, if they are part of your web app, don't ignore them.
+      # But your screenshot implies temp screenshots.asd
+
+# Project-specific development/temp folders (from your screenshot)
+Bernice Liew H/
+Chang Yoke M/
+gsheet-lark-pr/
+Jamie Case/
+IC.pages/         # This looks like a project folder itself, if it's not the root.
+Surprise.pages/   # Same here. Be careful if these are sub-projects you WANT to deploy.
+                  # If they are separate projects, they should have their own git repos.
+
+# Editor/IDE specific files
+.vscode/          # VS Code/Cursor settings (optional, but often good to ignore)
+.idea/            # IntelliJ/WebStorm
+*.sublime-project
+*.sublime-workspace
+
+# Database files
+*.sqlite
+*.db
+*.sqlite3
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output directories (if you ever add a build step)
+/dist/
+/build/
+/public/          # Only if this is a build output, not your source html/css/js
