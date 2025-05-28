@@ -406,7 +406,7 @@ function renderKpiTable(role, tableContainer, resultsContainer, roleName, employ
     });
 }
 
-function calculateAllScores(role, resultsContainer, roleName) {
+async function calculateAllScores(role, resultsContainer, roleName) {
     let totalScore = 0;
     const periodSelectElement = document.getElementById('kpi-period-select'); 
     const selectedPeriod = periodSelectElement ? periodSelectElement.value : 'N/A'; 
@@ -468,7 +468,7 @@ function calculateAllScores(role, resultsContainer, roleName) {
 
     const submitButton = document.getElementById('submit-kpi-record-button');
     if (submitButton) {
-        submitButton.addEventListener('click', () => {
+        submitButton.addEventListener('click', async () => { // <-- Make this callback async
             if (!currentEmployeeId) {
                 alert("No employee selected. Cannot submit record.");
                 return;
@@ -496,10 +496,12 @@ function calculateAllScores(role, resultsContainer, roleName) {
                 finalGrade: getFinalGrade(totalScore),
                 submissionTimestamp: new Date().toISOString()
             };
-
-            performanceRecords.push(record);
-            persistPerformanceRecords();
-            alert('KPI Record Submitted Successfully!');
+            if (!newRecord.id) {
+                newRecord.id = doc(collection(db, 'performanceRecords')).id;
+            }
+            performanceRecords.push(newRecord);
+            await persistCollection('performanceRecords', performanceRecords); // New Firestore call
+            alert('KPI Record Submitted!');
             submitButton.textContent = 'Record Submitted';
             submitButton.disabled = true;
             submitButton.style.backgroundColor = '#aaa';
@@ -1336,25 +1338,18 @@ function renderEmployeeList(container) {
 }
 
 // --- Performance Record Management ---
-function loadPerformanceRecords() {
-    const savedRecords = localStorage.getItem('kpiAppPerformanceRecords');
-    if (savedRecords) {
-        try {
-            const parsedRecords = JSON.parse(savedRecords);
-            if (Array.isArray(parsedRecords)) {
-                performanceRecords = parsedRecords;
-            } else {
-                console.warn('Saved performance records are not in array format. Initializing as empty.');
-                performanceRecords = [];
-                localStorage.setItem('kpiAppPerformanceRecords', JSON.stringify(performanceRecords));
-            }
-        } catch (error) {
-            console.error('Error parsing saved performance records:', error, 'Initializing as empty.');
-            performanceRecords = [];
-            localStorage.setItem('kpiAppPerformanceRecords', JSON.stringify(performanceRecords));
-        }
+async function loadPerformanceRecords() {
+    performanceRecords = []; // Clear local array
+    try {
+        const querySnapshot = await getDocs(collection(db, "performanceRecords"));
+        querySnapshot.forEach((docSnap) => {
+            performanceRecords.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        console.log('Performance records loaded from Firestore:', performanceRecords.length, 'records');
+    } catch (error) {
+        console.error('Error loading performance records from Firestore:', error);
+        performanceRecords = []; // Reset on error
     }
-    console.log('Performance records loaded:', performanceRecords.length, 'records');
 }
 
 function persistPerformanceRecords() {
