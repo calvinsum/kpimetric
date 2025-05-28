@@ -16,15 +16,6 @@ import {
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { writeBatch } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
-// Your subscription functions
-import {
-    subscribeEmployeeData,
-    subscribeKpiSettings,
-    subscribePerformanceRecords,
-    subscribeInputTypes,
-    subscribeDepartments,
-    subscribeCompetencyCategories
-  } from './script.js';
 
 // ———————————————————————————
 //  Real-time subscriptions
