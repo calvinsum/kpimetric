@@ -2321,7 +2321,6 @@ function renderAddEditKpiForm(roleIndex, kpiIndex = null) {
     }
 
 
-
 async function renderInputTypeSetupForm(container, editModeData = null) {
     console.log("[renderInputTypeSetupForm] Called. Edit Mode Data:", editModeData);
     if (!container) { /* ... error handling ... */ return; }
@@ -3037,8 +3036,6 @@ async function loadDepartments() { // Made async
     console.log('Configurable departments loaded:', configurableDepartments);
 }
 
-f
-
 function renderDepartmentSetupForm(container, editModeData = null) {
     console.log("[renderDepartmentSetupForm] Called. Edit Mode:", editModeData);
     if (!container) { console.error("[renderDepartmentSetupForm] Container not found."); return; }
@@ -3287,13 +3284,10 @@ async function loadCompetencyCategories() { // Made async
     console.log('Configurable competency categories loaded:', configurableCompetencyCategories);
 }
 
-// function persistCompetencyCategories() { // REMOVE THIS
-//     localStorage.setItem('kpiAppCompetencyCategories', JSON.stringify(configurableCompetencyCategories));
-//     console.log('Configurable competency categories persisted.');
-// }
 
 // renderSettings() function needs to be updated as described previously to include 'competencySetup'
-// ... existing code ...
+// displaySettingInputs() function needs to be updated as described previously for 'competencySetup'
+// DOMContentLoaded listener needs loadCompetencyCategories();
 
 function renderCompetencySetupPage(container) {
     console.log("[renderCompetencySetupPage] Called.");
