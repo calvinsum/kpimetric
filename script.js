@@ -16,6 +16,16 @@ import {
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { writeBatch } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
+// Your subscription functions
+import {
+    subscribeEmployeeData,
+    subscribeKpiSettings,
+    subscribePerformanceRecords,
+    subscribeInputTypes,
+    subscribeDepartments,
+    subscribeCompetencyCategories
+  } from './script.js';
+
 // ———————————————————————————
 //  Real-time subscriptions
 // ———————————————————————————
@@ -102,18 +112,35 @@ document.getElementById('login-button').addEventListener('click', handleLogin);
 document.getElementById('logout-button').addEventListener('click', handleLogout);
 
 // Listen for auth changes
-onAuthStateChanged(auth, (user) => {
-    const loginScreen = document.getElementById('login-screen');
-    const appContainer = document.getElementById('app-container');
+onAuthStateChanged(auth, user => {
+    if (user) {
+      // Initialize app once DOM is ready
+      document.addEventListener('DOMContentLoaded', () => {
+        subscribeEmployeeData();
+        subscribeKpiSettings();
+        subscribePerformanceRecords();
+        subscribeInputTypes();
+        subscribeDepartments();
+        subscribeCompetencyCategories();
   
-    if (user && user.email.endsWith('@storehub.com')) {
-      loginScreen.style.display = 'none';
-      appContainer.style.display = 'block';
+        // Show default view and populate selectors
+        showSection(calculatorSection);
+        populateRoleSelector(currentKpiData);
+      });
+  
+      // Toggle UI
+      document.querySelector('.login-container').style.display = 'none';
+      document.querySelector('.app-container').style.display = 'block';
     } else {
-      loginScreen.style.display = 'flex';
-      appContainer.style.display = 'none';
+      // Show login prompt
+      document.querySelector('.login-container').style.display = 'flex';
+      document.querySelector('.app-container').style.display = 'none';
     }
   });
+  
+  // Attach login/logout handlers
+  handleLogin();
+  handleLogout();
 
 // DOM Elements
 const navCalculator = document.getElementById('nav-calculator');
