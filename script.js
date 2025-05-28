@@ -496,10 +496,10 @@ async function calculateAllScores(role, resultsContainer, roleName) {
                 finalGrade: getFinalGrade(totalScore),
                 submissionTimestamp: new Date().toISOString()
             };
-            if (!newRecord.id) {
-                newRecord.id = doc(collection(db, 'performanceRecords')).id;
+            if (!record.id) {
+                record.id = doc(collection(db, 'performanceRecords')).id;
             }
-            performanceRecords.push(newRecord);
+            performanceRecords.push(record);
             await persistCollection('performanceRecords', performanceRecords); // New Firestore call
             alert('KPI Record Submitted!');
             submitButton.textContent = 'Record Submitted';
