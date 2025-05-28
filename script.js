@@ -4,8 +4,7 @@ import { db, auth } from './firebase.js';
 import { 
     collection, 
     getDocs,  
-    setDoc,  
-    onSnapshot, 
+    setDoc,   
     doc, 
     addDoc, 
     deleteDoc,
@@ -16,122 +15,24 @@ import {
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js';
 import { writeBatch } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js';
 
-
-// ———————————————————————————
-//  Real-time subscriptions
-// ———————————————————————————
-
-// 1) KPI settings (was in localStorage)
-function subscribeKpiSettings() {
-    const colRef = collection(db, "kpiSettings");
-    onSnapshot(colRef, snapshot => {
-      currentKpiData = snapshot.docs.map(doc => doc.data());
-      console.log("KPI Settings updated:", currentKpiData);
-      // If on calculator page, refresh selector
-      if (calculatorSection.style.display === 'block') populateRoleSelector(currentKpiData);
-    }, err => console.error("subscribeKpiSettings error:", err));
-  }
-  
-  /**
-   * Subscribe to 'employees' collection and update employeeData in real time.
-   */
-  function subscribeEmployeeData() {
-    const colRef = collection(db, "employees");
-    onSnapshot(colRef, snapshot => {
-      employeeData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log("Employees updated:", employeeData);
-      // If on employee page, re-render
-      if (employeeSection.style.display === 'block') renderEmployeeSection();
-    }, err => console.error("subscribeEmployeeData error:", err));
-  }
-  
-  /**
-   * Subscribe to KPI submissions stored in 'performanceRecords'.
-   */
-  function subscribePerformanceRecords() {
-    const colRef = collection(db, "performanceRecords");
-    onSnapshot(colRef, snapshot => {
-      performanceRecords = snapshot.docs.map(doc => doc.data());
-      console.log("PerformanceRecords updated:", performanceRecords);
-      // If on report page, re-render
-      if (reportSection.style.display === 'block') renderReportSection();
-    }, err => console.error("subscribePerformanceRecords error:", err));
-  }
-  
-  /**
-   * Subscribe to input types in 'inputTypes'.
-   */
-  function subscribeInputTypes() {
-    const colRef = collection(db, "inputTypes");
-    onSnapshot(colRef, snapshot => {
-      configurableInputTypes = snapshot.docs.map(doc => doc.data());
-      console.log("InputTypes updated:", configurableInputTypes);
-      if (settingsSection.style.display === 'block') renderSettings();
-    }, err => console.error("subscribeInputTypes error:", err));
-  }
-  
-  /**
-   * Subscribe to departments in 'departments'.
-   */
-  function subscribeDepartments() {
-    const colRef = collection(db, "departments");
-    onSnapshot(colRef, snapshot => {
-      configurableDepartments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log("Departments updated:", configurableDepartments);
-      if (settingsSection.style.display === 'block') renderSettings();
-    }, err => console.error("subscribeDepartments error:", err));
-  }
-  
-  /**
-   * Subscribe to competency categories in 'competencies'.
-   */
-  function subscribeCompetencyCategories() {
-    const colRef = collection(db, "competencies");
-    onSnapshot(colRef, snapshot => {
-      configurableCompetencyCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log("Competencies updated:", configurableCompetencyCategories);
-      if (settingsSection.style.display === 'block') renderSettings();
-    }, err => console.error("subscribeCompetencyCategories error:", err));
-  }
-  
-  
-
-
 const kpiDataAllRoles = [{"roleName":"Onboarding Team Lead","kpis":[{"name":"Go Live Rate","remarks":"No. of Accounts Go Live ≥ 10 txn / No. of Accounts in New Stage to Go Live Stage.","weightage":25,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":69}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Installation SLA","remarks":"Installation conducted on merchant requested date.","weightage":20,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":79}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":84}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":85,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Training Utilization Rate","remarks":"Total Monthly Slots for Training \\n= 1.75 trainings per day x 20 days x 5 OC \\n= 175 slots\\n\\nTotal Monthly Training (excluding Quick Guides) / Total Monthly Slots for Training \\n= Utilisation rate (%)","weightage":20,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lt","value":70}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"Onboarding CSAT","remarks":"CSAT survey related to onboarding.","weightage":25,"maxRating":5,"inputType":"percentage","lowerIsBetter":false,"performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lt","value":69}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":70,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":90}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":91,"upper":95}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gt","value":95}}]},{"name":"First 30 Days Go Live Care Ticket ≤ 5","remarks":"Merchant ticket escalation related to onboarding after go live ≤ 5","weightage":10,"maxRating":5,"inputType":"percentage_compliance","lowerIsBetter":false,"comment":"Input is compliance % for '≤ 5 tickets'. Higher % is better.","performanceBands":[{"gradeName":"Poor Performance","gradeValue":1,"condition":{"type":"percentage","operator":"lte","value":74}},{"gradeName":"Below Expectations","gradeValue":2,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":75,"upper":79}},{"gradeName":"Meets Expectations","gradeValue":3,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":80,"upper":85}},{"gradeName":"Exceeds Expectations","gradeValue":4,"condition":{"type":"percentage","operator":"range_inclusive_inclusive","lower":86,"upper":90}},{"gradeName":"Outstanding Performance","gradeValue":5,"condition":{"type":"percentage","operator":"gte","value":91}}]}]},/* Rest of kpiDataAllRoles JSON */];
  
 document.getElementById('login-button').addEventListener('click', handleLogin);
 document.getElementById('logout-button').addEventListener('click', handleLogout);
 
 // Listen for auth changes
-onAuthStateChanged(auth, user => {
-    if (user) {
-      // Initialize app once DOM is ready
-      document.addEventListener('DOMContentLoaded', () => {
-        subscribeEmployeeData();
-        subscribeKpiSettings();
-        subscribePerformanceRecords();
-        subscribeInputTypes();
-        subscribeDepartments();
-        subscribeCompetencyCategories();
+onAuthStateChanged(auth, (user) => {
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
   
-        // Show default view and populate selectors
-        showSection(calculatorSection);
-        populateRoleSelector(currentKpiData);
-      });
-  
-      // Toggle UI
-      document.querySelector('.login-container').style.display = 'none';
-      document.querySelector('.app-container').style.display = 'block';
+    if (user && user.email.endsWith('@storehub.com')) {
+      loginScreen.style.display = 'none';
+      appContainer.style.display = 'block';
     } else {
-      // Show login prompt
-      document.querySelector('.login-container').style.display = 'flex';
-      document.querySelector('.app-container').style.display = 'none';
+      loginScreen.style.display = 'flex';
+      appContainer.style.display = 'none';
     }
   });
-  
-  // Attach login/logout handlers
-  handleLogin();
-  handleLogout();
 
 // DOM Elements
 const navCalculator = document.getElementById('nav-calculator');
@@ -695,12 +596,15 @@ function loadKpiData() {
     // No need to re-assign kpiDataAllRoles, populateRoleSelector should use currentKpiData
 }
 
-async function persistKpiSettings() {
-    const ref = doc(db, 'appConfig', 'kpiData');
-    await setDoc(ref, { kpis: currentKpiData });
-    alert('Settings saved for everyone!');
-  }
-  
+function persistKpiSettings() {
+    localStorage.setItem('kpiAppData', JSON.stringify(currentKpiData));
+    alert('Settings saved!');
+    // If on calculator page and roles are already displayed, re-populate to reflect changes.
+    // This check ensures that we don't try to call populateRoleSelector if it's not relevant (e.g. script loaded headlessly)
+    if (document.getElementById('role-select')) { 
+        populateRoleSelector(currentKpiData); 
+    }
+}
 
 function renderSettings() {
     console.log('DEBUG: renderSettings FUNCTION CALLED'); 
@@ -1172,12 +1076,12 @@ const initialKpiData = JSON.parse(JSON.stringify(kpiDataAllRoles));
 
 document.addEventListener('DOMContentLoaded', async () => { // Make this async
     // ...
-    subscribeKpiSettings();
-    subscribeEmployeeData();
-    subscribePerformanceRecords();
-    subscribeInputTypes();
-    subscribeDepartments();
-    subscribeCompetencyCategories();
+    await loadKpiData(); // If this is async too
+    await loadEmployeeData(); // <<<< MAKE SURE THIS IS CALLED AND AWAITED
+    await loadPerformanceRecords(); // If async
+    await loadInputTypes(); // If async
+    await loadDepartments(); // If async
+    await loadCompetencyCategories(); // If async
     
     showSection(calculatorSection); 
     populateRoleSelector(currentKpiData); 
@@ -1453,11 +1357,10 @@ function loadPerformanceRecords() {
     console.log('Performance records loaded:', performanceRecords.length, 'records');
 }
 
-async function persistPerformanceRecord(record) {
-    // e.g. in your submit-KPI handler:
-    await addDoc(collection(db, 'performanceRecords'), record);
-  }
-  
+function persistPerformanceRecords() {
+    localStorage.setItem('kpiAppPerformanceRecords', JSON.stringify(performanceRecords));
+    console.log('Performance records persisted to local storage.');
+}
 
 
 // ... existing code ...
