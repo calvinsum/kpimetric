@@ -3127,7 +3127,7 @@ function renderDepartmentSetupForm(container, editModeData = null) {
     const deptNameInput = document.getElementById('department-name-input');
 
     if (saveDeptButton && deptNameInput) {
-        saveDeptButton.addEventListener('click', () => {
+        saveDeptButton.addEventListener('click', async () => { // MADE ASYNC
             const newDeptName = deptNameInput.value.trim();
             if (!newDeptName) { alert('Department name cannot be empty.'); return; }
 
@@ -3164,7 +3164,8 @@ function renderDepartmentSetupForm(container, editModeData = null) {
                 configurableDepartments.push({ id: newDeptId, name: newDeptName, assignedRoles: newlyAssignedRolesToCurrentDept });
                 alert('Department added successfully!');
             }
-            persistDepartments();
+            // persistDepartments(); // OLD localStorage call
+            await persistCollection('departments', configurableDepartments); // NEW: Persist to Firestore
             renderDepartmentSetupForm(container); 
         });
     }
@@ -3352,7 +3353,7 @@ function renderCompetencyCategoryManagement(container, editModeData = null) {
     const typeManagementContainerGlobal = document.getElementById('competency-type-management-container');
 
     if (saveCatButton && catNameInput) {
-        saveCatButton.addEventListener('click', () => {
+        saveCatButton.addEventListener('click', async () => { // MADE ASYNC
             const newCatName = catNameInput.value.trim();
             if (!newCatName) { alert('Category name cannot be empty.'); return; }
             const editingCatIdFromForm = document.getElementById('category-id-for-edit').value;
@@ -3374,7 +3375,8 @@ function renderCompetencyCategoryManagement(container, editModeData = null) {
                 configurableCompetencyCategories.push({ id: newCatId, name: newCatName, types: [] });
                 alert('Category added successfully!');
             }
-            persistCompetencyCategories();
+            // persistCompetencyCategories(); // OLD localStorage call
+            await persistCollection('competencyCategories', configurableCompetencyCategories); // NEW: Persist to Firestore
             renderCompetencyCategoryManagement(container); 
             if (typeManagementContainerGlobal) typeManagementContainerGlobal.style.display = 'none';
         });
@@ -3400,12 +3402,13 @@ function renderCompetencyCategoryManagement(container, editModeData = null) {
     });
 
     document.querySelectorAll('.delete-category-button').forEach(button => {
-        button.addEventListener('click', (event) => {
+        button.addEventListener('click', async (event) => { // MADE ASYNC
             const catIdToDelete = event.target.dataset.catId;
             const catBeingDeleted = configurableCompetencyCategories.find(c => c.id === catIdToDelete);
             if (catBeingDeleted && confirm(`Are you sure you want to delete the category "${catBeingDeleted.name}"? This will also delete all competency types defined within it.`)) {
                 configurableCompetencyCategories = configurableCompetencyCategories.filter(c => c.id !== catIdToDelete);
-                persistCompetencyCategories();
+                // persistCompetencyCategories(); // OLD localStorage call
+                await persistCollection('competencyCategories', configurableCompetencyCategories); // NEW: Persist to Firestore
                 renderCompetencyCategoryManagement(container);
                 document.getElementById('competency-type-management-container').style.display = 'none'; // Hide types section
                 // Later: also clear any employee competency data related to types from this category
@@ -3583,7 +3586,7 @@ function renderCompetencyTypeManagement(container, category, editTypeData = null
     // ... (Existing save, cancel, edit type, delete type listeners from previous implementation)
     const saveTypeButton = document.getElementById('save-competency-type-button');
     if (saveTypeButton) { 
-        saveTypeButton.addEventListener('click', () => {
+        saveTypeButton.addEventListener('click', async () => { // MADE ASYNC
             // ... (Get typeName, typeDescription, typeLevelScale, selectedDeptTags, selectedRoleTags as before) ...
             const typeName = document.getElementById('competency-type-name').value.trim();
             const typeDescription = document.getElementById('competency-type-description').value.trim();
@@ -3631,7 +3634,8 @@ function renderCompetencyTypeManagement(container, category, editTypeData = null
                 configurableCompetencyCategories[catIndex].types.push(typeData);
                 alert('Competency type added!');
             }
-            persistCompetencyCategories();
+            // persistCompetencyCategories(); // This is the OLD localStorage Call to be removed/replaced
+            await persistCollection('competencyCategories', configurableCompetencyCategories); // NEW Firestore Call
             renderCompetencyTypeManagement(container, configurableCompetencyCategories[catIndex]); 
             const categoryManagementContainer = document.getElementById('competency-category-management-container');
             if (categoryManagementContainer) renderCompetencyCategoryManagement(categoryManagementContainer);
@@ -4180,7 +4184,7 @@ function renderSingleCompetencyAssessmentFields(container, employee, category, t
 
     const saveSingleButton = document.getElementById('save-single-competency-assessment-button');
     if (saveSingleButton) { 
-        saveSingleButton.addEventListener('click', (event) => {
+        saveSingleButton.addEventListener('click', async (event) => { // MADE ASYNC
             const typeIdToSave = event.target.dataset.competencyTypeId;
             const categoryIdOfSavedType = event.target.dataset.categoryId; // Ensure this is correct
             const assessedLevelValue = parseInt(document.getElementById(`level-select-${typeIdToSave}`).value) || null;
@@ -4205,8 +4209,11 @@ function renderSingleCompetencyAssessmentFields(container, employee, category, t
             } else {
                 employee.assessedCompetencies.push(assessmentEntry);
             }
-            persistEmployeeData();
+            // persistEmployeeData(); // Replace this line
+            await saveEmployee(employee); // With this line
+
             alert(`Assessment for competency type '${type.name}' saved successfully for ${employee.name}!`);
+            
             
             const assessedListContainerUpdate = document.getElementById('current-employee-competencies-list-container');
             if (assessedListContainerUpdate) {
